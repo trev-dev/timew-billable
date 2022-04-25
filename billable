@@ -1,0 +1,69 @@
+#! /usr/bin/python
+
+# import datetime
+import json
+import sys
+from functools import reduce
+from itertools import groupby
+
+def coerce_float(someval):
+    try:
+        return float(someval)
+    except ValueError:
+        return someval
+
+def to_config_dict(cdict, line):
+    """
+    Reduce a list of configuration lines into a configuration dictionary of
+    relavent configurations for reporting.
+    """
+    kvpair = line.split(": ", 2)
+    conf_keys = kvpair[0].split(".")
+    if conf_keys[0] != "billable": return cdict
+
+    key = conf_keys[0] if len(conf_keys) < 2 else conf_keys[1]
+    cdict[key] = coerce_float(kvpair[1])
+
+    return cdict
+
+def iterate_tasks(tasks):
+    """
+    Iterate a nested dict of tasks
+    """
+
+def organize_subtasks(entries):
+    """
+    Build a hierarchical dictionary of tasks and related subtasks.
+
+    Parameters:
+        entries: A list of timewarrior entries.
+    Returns:
+        A nested dictionary of tasks/subtasks.
+    """
+    
+
+
+def parse_lines(stdin):
+    """
+    Parse stdin into a tuple of dictionaries.
+
+    Parameters:
+        stdin (sys.stdin): Standard input.
+
+    Returns:
+        tuple: Parsed data: (config setting, parsed time entries)
+    """
+    lines = [ln.strip() for ln in stdin]
+    config_lines = lines[:lines.index("")]
+    entries_json = "".join(lines[lines.index("") + 1:])
+    configs = reduce(to_config_dict, config_lines, {})
+    entries = json.loads(entries_json)
+    return (configs, entries)
+
+def generate_report(data):
+    conf, entries = data
+    organize_subtasks(entries)
+
+if __name__ == "__main__":
+    data = parse_lines(sys.stdin)
+    generate_report(data)
