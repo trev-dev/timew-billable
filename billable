@@ -4,13 +4,14 @@
 import json
 import sys
 from functools import reduce
-from itertools import groupby
+
 
 def coerce_float(someval):
     try:
         return float(someval)
     except ValueError:
         return someval
+
 
 def to_config_dict(cdict, line):
     """
@@ -19,19 +20,31 @@ def to_config_dict(cdict, line):
     """
     kvpair = line.split(": ", 2)
     conf_keys = kvpair[0].split(".")
-    if conf_keys[0] != "billable": return cdict
+    if conf_keys[0] != "billable":
+        return cdict
 
     key = conf_keys[0] if len(conf_keys) < 2 else conf_keys[1]
     cdict[key] = coerce_float(kvpair[1])
 
     return cdict
 
-def iterate_tasks(tasks):
-    """
-    Iterate a nested dict of tasks
-    """
 
-def organize_subtasks(entries):
+def create_levels(entry, conf, time=0):
+    """ Recursively create nested Project: Task relationships. """
+    pass
+
+
+def not_metadata(tag, config):
+    """ Test a tag to make sure it's not a piece of meta-data. """
+    return tag not in config and not tag.startswith(config["project_marker"])
+
+
+def take_first(pred, list):
+    """ Grab the first item from a filtered list """
+    return next(filter(pred, list), None)
+
+
+def organize_subtasks(data):
     """
     Build a hierarchical dictionary of tasks and related subtasks.
 
@@ -40,7 +53,32 @@ def organize_subtasks(entries):
     Returns:
         A nested dictionary of tasks/subtasks.
     """
-    
+    config, entries = data
+    for entry in entries:
+        hierarchy = []
+        tags = entry["tags"]
+
+        dmarker = config["description_marker"]
+        if dmarker:
+            task = take_first(lambda t: t.startswith(dmarker), tags)
+        else:
+            task = take_first(lambda t: not_metadata(t, config), tags)
+
+        if dmarker and not task:
+            task = take_first(lambda t: not_metadata(t, config), tags)
+
+        if not task:
+            continue
+
+        # Find Project.category tree.
+        pmarker = config["project_marker"]
+        project_tree = take_first(lambda t: t.startswith(pmarker), tags)
+
+        if project_tree:
+            hierarchy.append(*project_tree[1:].split(config["separator"]))
+
+        hierarchy.append(task)
+        print(hierarchy)
 
 
 def parse_lines(stdin):
@@ -56,13 +94,21 @@ def parse_lines(stdin):
     lines = [ln.strip() for ln in stdin]
     config_lines = lines[:lines.index("")]
     entries_json = "".join(lines[lines.index("") + 1:])
-    configs = reduce(to_config_dict, config_lines, {})
+
+    config_defaults = {
+            "project_marker": "#", "separator": ".",
+            "billable": 0, "description_marker": None
+            }
+
+    configs = reduce(to_config_dict, config_lines, config_defaults)
     entries = json.loads(entries_json)
+    print(configs)
     return (configs, entries)
 
+
 def generate_report(data):
-    conf, entries = data
-    organize_subtasks(entries)
+    lines = organize_subtasks(data)
+
 
 if __name__ == "__main__":
     data = parse_lines(sys.stdin)
