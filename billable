@@ -1,9 +1,17 @@
 #! /usr/bin/python
 
-# import datetime
+from functools import reduce
+from datetime import datetime
+import locale
 import json
 import sys
-from functools import reduce
+
+DATEFORMAT = "%Y%m%dT%H%M%SZ"
+CONFIG_DEFAULTS = {
+    "project_marker": "#", "separator": ".",
+    "billable": 0, "description_marker": None,
+    "locale": ''
+}
 
 
 def coerce_float(someval):
@@ -44,6 +52,44 @@ def take_first(pred, list):
     return next(filter(pred, list), None)
 
 
+def get_billable_hours(entry):
+    """ Get the time spent, and billable hours for an entry """
+    start = datetime.strptime(entry["start"], DATEFORMAT)
+
+    if "end" in entry:
+        end = datetime.strptime(entry["end"], DATEFORMAT)
+    else:
+        end = datetime.utcnow()
+
+    tracked = end - start
+    hours = round(tracked.total_seconds() / pow(60, 2), 2)
+    return (tracked, hours)
+
+
+def get_rate(entry, config):
+    """
+    Find the contextual billable rate for a task.
+    """
+    expected_keys = CONFIG_DEFAULTS.keys()
+
+    for tag in entry["tags"]:
+        if tag not in expected_keys:
+            rate = config.get(tag, None)
+            if rate:
+                return rate
+
+    return config["billable"]
+
+
+def update_tasks(tasks, task):
+    """
+    Recursively update the tasks list and apply new time data to existing
+    projects, or add and update missing projects.
+    """
+    print(task)
+    pass
+
+
 def organize_subtasks(data):
     """
     Build a hierarchical dictionary of tasks and related subtasks.
@@ -54,6 +100,7 @@ def organize_subtasks(data):
         A nested dictionary of tasks/subtasks.
     """
     config, entries = data
+    tasks = []
     for entry in entries:
         hierarchy = []
         tags = entry["tags"]
@@ -78,7 +125,10 @@ def organize_subtasks(data):
             hierarchy.append(*project_tree[1:].split(config["separator"]))
 
         hierarchy.append(task)
-        print(hierarchy)
+        billables = get_billable_hours(entry)
+        rate = get_rate(entry, config)
+        task = [hierarchy, billables, rate]
+        tasks = update_tasks(tasks, task)
 
 
 def parse_lines(stdin):
@@ -95,12 +145,7 @@ def parse_lines(stdin):
     config_lines = lines[:lines.index("")]
     entries_json = "".join(lines[lines.index("") + 1:])
 
-    config_defaults = {
-            "project_marker": "#", "separator": ".",
-            "billable": 0, "description_marker": None
-            }
-
-    configs = reduce(to_config_dict, config_lines, config_defaults)
+    configs = reduce(to_config_dict, config_lines, CONFIG_DEFAULTS)
     entries = json.loads(entries_json)
     print(configs)
     return (configs, entries)
@@ -112,4 +157,5 @@ def generate_report(data):
 
 if __name__ == "__main__":
     data = parse_lines(sys.stdin)
+    locale.setlocale(locale.LC_ALL, data[0]["locale"])
     generate_report(data)
