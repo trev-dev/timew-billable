@@ -37,11 +37,6 @@ def to_config_dict(cdict, line):
     return cdict
 
 
-def create_levels(entry, conf, time=0):
-    """ Recursively create nested Project: Task relationships. """
-    pass
-
-
 def not_metadata(tag, config):
     """ Test a tag to make sure it's not a piece of meta-data. """
     return tag not in config and not tag.startswith(config["project_marker"])
@@ -81,13 +76,38 @@ def get_rate(entry, config):
     return config["billable"]
 
 
-def update_tasks(tasks, task):
+def update_row_data(rows, task):
     """
-    Recursively update the tasks list and apply new time data to existing
-    projects, or add and update missing projects.
+    Apply task data to some table row data and its descendent children.
+
+    Parameters:
+        rows (list): The current nested list of table row data.
+        task (tuple): The current task which contains the task
+            hierarchy, a tuple of billable hours and the billable rate.
+    Returns:
+        rows (list): The updated data rows.
     """
-    print(task)
-    pass
+    levels, billable, rate = task
+    _tracked, hours = billable
+    level, *nested = levels
+    row = -1
+
+    for i, t in enumerate(rows):
+        if t[0] == level:
+            row = i
+            break
+
+    if row > -1:
+        rows[row][1] += hours
+    else:
+        rows.append([level, hours, []])
+        row = len(rows) - 1
+
+    if nested:
+        next = (nested, billable, rate)
+        rows[row][2] = update_row_data(rows[row][2], next)
+
+    return rows
 
 
 def organize_subtasks(data):
@@ -95,12 +115,13 @@ def organize_subtasks(data):
     Build a hierarchical dictionary of tasks and related subtasks.
 
     Parameters:
-        entries: A list of timewarrior entries.
+        data (tuple): A tuple containing relevant configs and data
+        entries
     Returns:
-        A nested dictionary of tasks/subtasks.
+        A list of nested table row data.
     """
     config, entries = data
-    tasks = []
+    rows = []
     for entry in entries:
         hierarchy = []
         tags = entry["tags"]
@@ -127,8 +148,10 @@ def organize_subtasks(data):
         hierarchy.append(task)
         billables = get_billable_hours(entry)
         rate = get_rate(entry, config)
-        task = [hierarchy, billables, rate]
-        tasks = update_tasks(tasks, task)
+        task = (hierarchy, billables, rate)
+        rows = update_row_data(rows, task)
+
+    return rows
 
 
 def parse_lines(stdin):
@@ -147,12 +170,12 @@ def parse_lines(stdin):
 
     configs = reduce(to_config_dict, config_lines, CONFIG_DEFAULTS)
     entries = json.loads(entries_json)
-    print(configs)
     return (configs, entries)
 
 
 def generate_report(data):
-    lines = organize_subtasks(data)
+    row_data = organize_subtasks(data)
+    print(row_data)
 
 
 if __name__ == "__main__":
