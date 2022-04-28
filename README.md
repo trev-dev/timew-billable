@@ -12,7 +12,7 @@ Version 0.1.0
 
 Check back later for updates :)
 
-## Contents.
+## Contents
 
 1. <a href="#start">Getting Started</a>
 2. <a href="#config">Configuration</a>
@@ -43,18 +43,16 @@ In order to make things work correctly, we're going to need to embed our own met
 There is an [example config](./example.cfg) in this repository which contains the configuration defaults. It is meant to be used as a reference. It is not necessary to re-define the default configuration.
 
 Here are the configuration options:  
-* `billable` - Your default, billable rate as a float. Default: `0.0`
-
+* `billable` - Your default, billable rate as a float.
+  Default: `0.0`
 * `billable.<client>` - Specify a separate billable rate tag for any given task/project.
-
-* `billable.project_marker` - Specify a marker to flag the time entry as a project with a specific hierarchy. Default: `#`
-
-* `billable.separator` - Specify the character used to split a project hierarchy into its nested subtasks. Default: `.`
-
+* `billable.project_marker` - Specify a marker to flag the time entry as a project with a specific hierarchy.
+  Default: `#`
+* `billable.separator` - Specify the character used to split a project hierarchy into its nested subtasks.
+  Default: `.`
 * `billable.description_marker` - An optional marker for a task description. The first non-configuration or non-meta tag is used by default.
 
-  *Timewarrior does not reinforce the order of your tags automatically*. If you struggle with their order by changing tags in Time/Taskwarrior, this configuration option is for you.
-
+  **Timewarrior does not reinforce the order of your tags automatically**. If you struggle with their order by changing tags in Time/Taskwarrior, this configuration option is for you.
 * `billable.locale` - Specify your locale for the purposes of formatting currency.
 
 <div id="example"></div>
@@ -105,6 +103,7 @@ Total                               16.5     $150.00
 ```
 
 <div id="future"></div>
+
 ## Planned Features
 
 - [ ] Write Tests
