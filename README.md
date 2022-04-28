@@ -43,12 +43,12 @@ In order to make things work correctly, we're going to need to embed our own met
 There is an [example config](./example.cfg) in this repository which contains the configuration defaults. It is meant to be used as a reference. It is not necessary to re-define the default configuration.
 
 Here are the configuration options:  
-* `billable` - Your default, billable rate as a float.
+* `billable` - Your default, billable rate as a float.  
   Default: `0.0`
 * `billable.<client>` - Specify a separate billable rate tag for any given task/project.
-* `billable.project_marker` - Specify a marker to flag the time entry as a project with a specific hierarchy.
+* `billable.project_marker` - Specify a marker to flag the time entry as a project with a specific hierarchy.  
   Default: `#`
-* `billable.separator` - Specify the character used to split a project hierarchy into its nested subtasks.
+* `billable.separator` - Specify the character used to split a project hierarchy into its nested subtasks.  
   Default: `.`
 * `billable.description_marker` - An optional marker for a task description. The first non-configuration or non-meta tag is used by default.
 
