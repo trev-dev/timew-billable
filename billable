@@ -1,5 +1,14 @@
 #! /usr/bin/python
 
+"""
+File: timew-billable
+Description:
+    A script for organizing Timewarrior log entries into nested projects, tasks
+    and subtasks with billable hours for the purposes of reporting & invoicing.
+Authors: Trevor Richards <trev@trevdev.ca>
+License: GPLv3
+"""
+
 from functools import reduce
 from datetime import datetime, timedelta
 import locale
