@@ -76,14 +76,15 @@ I do some work for Wild Poppy, then at the end of the month I decide to invoice 
 When I run `timew billable :month WildPoppy` I get this:
 
 ```
-Projects                      Time   Subtotals
-==============================================
-WildPoppy.Website             16.5   $1,320.00
-— Make a homepage              7.0     $560.00
-— Make a navigation menu       5.5     $440.00
-— Make an order-form page      4.0     $320.00
-==============================================
-Total                         16.5   $1,320.00
+Projects                       Time   Subtotals
+===============================================
+WildPoppy                      16.5   $1,320.00
+— Website                      16.5   $1,320.00
+—— Make a homepage              7.0     $560.00
+—— Make a navigation menu       5.5     $440.00
+—— Make an order-form page      4.0     $320.00
+===============================================
+Total                          16.5   $1,320.00
 ```
 
 Maybe later on Wild Poppy gets really successful and has tons of work for me. We negotiate a special bulk-rate, separate from my usual rate. All I have to do is go into my configuration and add `billable.WildPoppy = 70' to give them a special rate.

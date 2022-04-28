@@ -208,7 +208,7 @@ def prepare_table_data(data):
         project_tree = take_first(lambda t: t.startswith(pmarker), tags)
 
         if project_tree:
-            hierarchy.append(*project_tree[1:].split(config["separator"]))
+            hierarchy += project_tree[1:].split(config["separator"])
 
         hierarchy.append(task)
 
