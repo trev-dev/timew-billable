@@ -1,0 +1,11 @@
+{
+  "#client1":{"count":1},
+  "#client1.sub1":{"count":1},
+  "#client1.sub1.subsub1":{"count":2},
+  "#client1.sub2":{"count":1},
+  "#client1.sub2.subsub2":{"count":1},
+  "#client1.sub2.subsub3":{"count":1},
+  "client1":{"count":7},
+  "~task1":{"count":6},
+  "~task2":{"count":1}
+}
