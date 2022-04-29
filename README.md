@@ -18,6 +18,7 @@ Check back later for updates :)
 2. <a href="#config">Configuration</a>
 3. <a href="#example">Example</a>
 4. <a href="#future">Planned Features</a>
+5. <a href="#contrib">Contributing</a>
 
 <div id="start"></div>
 
@@ -112,3 +113,11 @@ Total                               16.5     $150.00
 - [ ] Add a CSV export for any/all scripts.
 - [ ] Add MarkDown table format for any/all scripts for easy PDF exports or TaskWiki usage.
 - [ ] Refactor into pip module(?)
+
+<div id="contrib"></div>
+
+## Contributing
+
+If you would like to contribute to the project, please fork this repository and submit your PRs to branch `devel`.
+
+Issues and discussions are also welcome :)
