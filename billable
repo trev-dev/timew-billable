@@ -7,12 +7,13 @@ Description:
     and subtasks with billable hours for the purposes of reporting & invoicing.
 Authors: Trevor Richards <trev@trevdev.ca>
 License: GPLv3
-Version: 0.1.1
-Updated: 2022-04-30
+Version: 0.1.2
+Updated: 2022-05-04
 """
 
 from functools import reduce
 from datetime import datetime, timedelta
+from copy import deepcopy
 import locale
 import json
 import sys
@@ -254,7 +255,7 @@ def parse_lines(stdin):
     config_lines = lines[:lines.index("")]
     entries_json = "".join(lines[lines.index("") + 1:])
 
-    configs = reduce(to_config_dict, config_lines, CONFIG_DEFAULTS)
+    configs = reduce(to_config_dict, config_lines, deepcopy(CONFIG_DEFAULTS))
     entries = json.loads(entries_json)
     return (configs, entries)
 
