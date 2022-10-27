@@ -6,8 +6,6 @@ type
     projectMarker: string
     billable: float
     clients: seq[ClientSpecificRate]
-    descriptionMarker: string
-    locale: string
 
 const CONFIG_DEFAULTS = Config(
 const CONFIG_DEFAULTS: Config = (
@@ -42,8 +40,6 @@ proc createConfig(keys: seq[string]): Config =
     else:
       case conf_keys[1]:
         of "project_marker": conf.projectMarker = kvpair[1]
-        of "description_marker": conf.descriptionMarker = kvpair[1]
-        of "locale": conf.locale = kvpair[1]
         else:
           let rate = coerceFloat(kvpair[1])
           add(conf.clients, (client: conf_keys[1], rate: rate))
