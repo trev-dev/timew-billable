@@ -16,12 +16,10 @@ const CONFIG_DEFAULTS: Config = (
   locale: ""
 )
 
-func stripStr(s: string): string = strip s
-
 func coerceFloat(s:string): float =
   try:
     return parseFloat(s)
-  except ValueError as e:
+  except ValueError:
     assert(
       false,
       "Failed to parse config! Value " & s & " should be a float type."
