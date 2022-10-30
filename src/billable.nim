@@ -12,8 +12,12 @@ type
     tuple[id: int, start: string, `end`: string, tags: seq[string]]
   RawTimewEntries = seq[RawTimeEntry]
 
-  TimeEntry = tuple[name: string, hours: float, cost: float, rate: float]
-  Table = seq[seq[TimeEntry]]
+  TableRow = object
+    name: string
+    hours: float
+    cost: float
+    subtasks: seq[TableRow]
+  Table = seq[TableRow]
 
 func coerceFloat(s:string): float =
   try:
