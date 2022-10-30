@@ -19,29 +19,31 @@ func coerceFloat(s:string): float =
   try:
     return parseFloat(s)
   except ValueError:
-    assert(
-      false,
-      "Failed to parse config! Value " & s & " should be a float type."
-    )
+    let message = "Failed to parse config! Value " &
+      s & " should be a float type."
+    assert(false, message)
 
 func createConfig(keys: seq[string]): Config =
   var conf: Config
   conf.projectMarker = "#"
 
   for i in keys:
-    let kvpair = map(split(i, ":", 1), proc (s:string):string = strip s)
+    let kvpair = i
+      .split(":", 1)
+      .map(proc (s:string):string = strip s)
+
     if kvpair[1] == "": continue
 
-    let conf_keys = split(kvpair[0], ".", 1)
+    let conf_keys = kvpair[0].split(".", 1)
     if len(conf_keys) == 1:
-      conf.billable = coerceFloat(kvpair[1])
+      conf.billable = coerceFloat kvpair[1]
 
     else:
       case conf_keys[1]
         of "project_marker": conf.projectMarker = kvpair[1]
         else:
-          let rate = coerceFloat(kvpair[1])
-          add(conf.clients, (client: conf_keys[1], rate: rate))
+          let rate = coerceFloat kvpair[1]
+          conf.clients.add (client: conf_keys[1], rate: rate)
   return conf
 
 func parseEntryHierarchy(tags: seq[string], pMarker: string): seq[string] =
@@ -53,30 +55,26 @@ func parseEntryHierarchy(tags: seq[string], pMarker: string): seq[string] =
   else:
     result.add tags[0]
 
-func updateTableRow(
-  table: Table, hierarchy: seq[string], entry: RawTimeEntry
-): seq[TimeEntry] =
-  let levels = hierarchy.len
+proc addRow(table: Table, entry: RawTimeEntry, config: Config) =
+  let hierarchy = entry.tags.parseEntryHierarchy config.projectMarker
+  let levels = hierarchy.len - 1
+  echo hierarchy
 
-func prepareTableData(config: Config, rawEntries: RawTimewEntries): Table =
-  var table: Table = @[]
-  for i in 0 ..< rawEntries.len:
-    let entry = rawEntries[i]
-    let hierarchy = entry.tags.parseEntryHierarchy config.projectMarker
-
-  return table
+proc prepareTable(config: Config, rawEntries: RawTimewEntries): Table =
+  for entry in rawEntries.items:
+    result.addRow(entry, config)
 
 func stripString(s:string):string = s.strip()
 
-let rawConfigAndEntries = readAll(stdin).split("\n\n")
+let rawConfigAndEntries = readAll(stdin).split "\n\n"
 
 let configStrings = rawConfigAndEntries[0]
   .findAll(re"(^|\n)billable.*")
   .map(stripString)
 
-let config = createConfig(configStrings)
+let config = createConfig configStrings
 
-let jsonData = rawConfigAndEntries[1].fromJson(RawTimewEntries)
+let jsonData = rawConfigAndEntries[1].fromJson RawTimewEntries
 
-discard config.prepareTableData jsonData
+discard config.prepareTable jsonData
 
