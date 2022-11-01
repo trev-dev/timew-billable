@@ -1,4 +1,4 @@
-import std/[strutils, re, sequtils]
+import std/[strutils, re, sequtils, times, math, strformat]
 import jsony
 
 type
@@ -12,19 +12,20 @@ type
     tuple[id: int, start: string, `end`: string, tags: seq[string]]
   RawTimewEntries = seq[RawTimeEntry]
 
+  Table = seq[TableRow]
   TableRow = object
     name: string
     hours: float
     cost: float
     subtasks: seq[TableRow]
-  Table = seq[TableRow]
+
 
 func coerceFloat(s:string): float =
   try:
     return parseFloat(s)
   except ValueError:
-    let message = "Failed to parse config! Value " &
-      s & " should be a float type."
+    let message =
+      fmt "Failed to parse config! Value {s} should be a float type."
     assert(false, message)
 
 func createConfig(keys: seq[string]): Config =
@@ -59,14 +60,95 @@ func parseEntryHierarchy(tags: seq[string], pMarker: string): seq[string] =
   else:
     result.add tags[0]
 
-proc addRow(table: Table, entry: RawTimeEntry, config: Config) =
-  let hierarchy = entry.tags.parseEntryHierarchy config.projectMarker
-  let levels = hierarchy.len - 1
-  echo hierarchy
+func find[T](s: seq[T], pred: proc (i: T): bool): int =
+  result = -1
+  for idx, itm in s.pairs:
+    if pred(itm):
+      return idx
+
+func findByName[T](s: seq[T], n: string): int =
+  result = s.find(proc (r: TableRow): bool = r.name == n)
+
+func toBillableHours(d: Duration): float =
+  round(d.inSeconds.toBiggestFloat / 60.0 / 60.0, 3)
+
+func billableRate(c: Config, e: RawTimeEntry): float =
+  for c in c.clients.items:
+    if e.tags.find(c.client) > -1:
+      return c.rate
+  return c.billable
+
+func calculateCost(h: float, r: float): float =
+  round(h * r, 2)
+
+proc parseDuration(e: RawTimeEntry): Duration =
+  let fmt = "yyyyMMdd'T'HHmmss'Z'"
+  let stime = e.start.parse fmt
+  let etime = e.`end`.parse fmt
+  etime - stime
+
+func subTotalHours(r: var TableRow): float =
+  result = r.hours
+  for task in r.subtasks.mitems:
+    task.hours = task.subTotalHours()
+    result += task.hours
+
+proc subTotalCost(r: var TableRow): float =
+  result = r.cost
+  for task in r.subtasks.mitems:
+    task.cost = task.subTotalCost()
+    result += task.cost
+
+func totalCost(t: Table): float =
+  for row in t:
+    result += row.cost
+
+func totalHours(t: Table): float =
+  for row in t:
+    result += row.hours
+
+proc addOrUpdateRow(
+  table: var Table,
+  entry: RawTimeEntry,
+  hierarchy: seq[string],
+  config: Config
+) =
+  let taskName = hierarchy[0]
+  let nextTasks = hierarchy[1..^1]
+  let idx = table.findByName taskName
+  let rowExists = idx > -1
+
+  var newRow: TableRow
+  if rowExists:
+    newRow = table[idx]
+  else:
+    newRow = TableRow(name: taskName)
+
+  if nextTasks.len > 0:
+    newRow.subtasks.addOrUpdateRow(entry, nextTasks, config)
+  else:
+    let rate = config.billableRate entry
+    let hours = entry.parseDuration.toBillableHours
+    newRow.hours += hours
+    newRow.cost += hours.calculateCost rate
+
+  if rowExists:
+    table[idx] = newRow
+  else:
+    table.add newRow
 
 proc prepareTable(config: Config, rawEntries: RawTimewEntries): Table =
   for entry in rawEntries.items:
-    result.addRow(entry, config)
+    let entryHierarcy = entry.tags.parseEntryHierarchy config.projectMarker
+    result.addOrUpdateRow(entry, entryHierarcy, config)
+
+  for row in result.mitems:
+    row.cost = row.subTotalCost()
+    row.hours = row.subTotalHours()
+
+  let totals =
+    TableRow(name: "TOTAL", hours: result.totalHours, cost: result.totalCost)
+  result.add totals
 
 func stripString(s:string):string = s.strip()
 
@@ -80,5 +162,5 @@ let config = createConfig configStrings
 
 let jsonData = rawConfigAndEntries[1].fromJson RawTimewEntries
 
-discard config.prepareTable jsonData
+echo config.prepareTable jsonData
 
