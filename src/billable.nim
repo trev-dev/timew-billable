@@ -19,6 +19,7 @@ type
     cost: float
     subtasks: seq[TableRow]
 
+func stripString(s:string):string = s.strip()
 
 func coerceFloat(s:string): float =
   try:
@@ -35,7 +36,7 @@ func createConfig(keys: seq[string]): Config =
   for i in keys:
     let kvpair = i
       .split(":", 1)
-      .map(proc (s:string):string = strip s)
+      .map(stripString)
 
     if kvpair[1] == "": continue
 
@@ -78,19 +79,13 @@ func billableRate(c: Config, e: RawTimeEntry): float =
       return c.rate
   return c.billable
 
-proc parseDuration(e: RawTimeEntry): Duration =
-  let fmt = initTimeFormat "yyyyMMdd'T'HHmmss'Z'"
-  let stime = e.start.parse fmt
-  let etime = e.`end`.parse fmt
-  etime - stime
-
 func subTotalHours(r: var TableRow): float =
   result = r.hours
   for task in r.subtasks.mitems:
     task.hours = task.subTotalHours()
     result += task.hours
 
-proc subTotalCost(r: var TableRow): float =
+func subTotalCost(r: var TableRow): float =
   result = r.cost
   for task in r.subtasks.mitems:
     task.cost = task.subTotalCost()
@@ -104,7 +99,11 @@ func totalHours(t: Table): float =
   for row in t:
     result += row.hours
 
-func stripString(s:string):string = s.strip()
+proc parseDuration(e: RawTimeEntry): Duration =
+  let fmt = initTimeFormat "yyyyMMdd'T'HHmmss'Z'"
+  let stime = e.start.parse fmt
+  let etime = e.`end`.parse fmt
+  etime - stime
 
 proc addOrUpdateRow(
   table: var Table,
@@ -135,7 +134,6 @@ proc addOrUpdateRow(
     table[idx] = newRow
   else:
     table.add newRow
-
 
 proc prepareTable(config: Config, rawEntries: RawTimewEntries): Table =
   for entry in rawEntries.items:
