@@ -78,9 +78,6 @@ func billableRate(c: Config, e: RawTimeEntry): float =
       return c.rate
   return c.billable
 
-func calculateCost(h: float, r: float): float =
-  round(h * r, 2)
-
 proc parseDuration(e: RawTimeEntry): Duration =
   let fmt = initTimeFormat "yyyyMMdd'T'HHmmss'Z'"
   let stime = e.start.parse fmt
@@ -130,7 +127,7 @@ proc addOrUpdateRow(
     let rate = config.billableRate entry
     let hours = entry.parseDuration.toBillableHours
     newRow.hours += hours
-    newRow.cost += hours.calculateCost rate
+    newRow.cost += round(hours * rate, 2)
 
   if rowExists:
     table[idx] = newRow
