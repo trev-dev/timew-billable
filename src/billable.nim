@@ -1,5 +1,5 @@
 import std/[strutils, re, sequtils, times, math, strformat]
-import jsony
+import jsony, nancy
 
 type
   ClientSpecificRate = tuple[client: string, rate: float]
@@ -104,6 +104,8 @@ func totalHours(t: Table): float =
   for row in t:
     result += row.hours
 
+func stripString(s:string):string = s.strip()
+
 proc addOrUpdateRow(
   table: var Table,
   entry: RawTimeEntry,
@@ -134,6 +136,7 @@ proc addOrUpdateRow(
   else:
     table.add newRow
 
+
 proc prepareTable(config: Config, rawEntries: RawTimewEntries): Table =
   for entry in rawEntries.items:
     let entryHierarcy = entry.tags.parseEntryHierarchy config.projectMarker
@@ -147,17 +150,36 @@ proc prepareTable(config: Config, rawEntries: RawTimewEntries): Table =
     TableRow(name: "TOTAL", hours: result.totalHours, cost: result.totalCost)
   result.add totals
 
-func stripString(s:string):string = s.strip()
+proc loadTerminalTable(tt: var TerminalTable, t: Table, level: int = 0) =
+  for row in t.items:
+    var indent: string
+    if level > 0:
+      indent.insert " "
+      for i in [1..level]:
+        indent.insert "-"
+    tt.add @[
+      fmt"{indent}{row.name}",
+      fmt"{row.hours:.3f}",
+      fmt"{row.cost:.2f}"
+    ]
+    tt.loadTerminalTable(row.subtasks, level + 1)
 
-let rawConfigAndEntries = readAll(stdin).split "\n\n"
+proc render(tableRows: Table) =
+  var table: TerminalTable
+  table.loadTerminalTable tableRows
+  table.echoTable 80
 
-let configStrings = rawConfigAndEntries[0]
-  .findAll(re"(^|\n)billable.*")
-  .map(stripString)
+proc main() =
+  let rawConfigAndEntries = readAll(stdin).split "\n\n"
 
-let config = createConfig configStrings
+  let configStrings = rawConfigAndEntries[0]
+    .findAll(re"(^|\n)billable.*")
+    .map(stripString)
 
-let jsonData = rawConfigAndEntries[1].fromJson RawTimewEntries
-
-echo config.prepareTable jsonData
-
+  let config = createConfig configStrings
+  let jsonData = rawConfigAndEntries[1].fromJson RawTimewEntries
+  let table = config.prepareTable jsonData
+  table.render()
+  
+when isMainModule:
+  main()
