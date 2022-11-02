@@ -82,7 +82,7 @@ func calculateCost(h: float, r: float): float =
   round(h * r, 2)
 
 proc parseDuration(e: RawTimeEntry): Duration =
-  let fmt = "yyyyMMdd'T'HHmmss'Z'"
+  let fmt = initTimeFormat "yyyyMMdd'T'HHmmss'Z'"
   let stime = e.start.parse fmt
   let etime = e.`end`.parse fmt
   etime - stime
