@@ -150,13 +150,12 @@ proc prepareTable(config: Config, rawEntries: RawTimewEntries): Table =
 
 proc loadTerminalTable(tt: var TerminalTable, t: Table, level: int = 0) =
   for row in t.items:
-    var indent: string
+    var spacing: string
+    let marker = "—"
     if level > 0:
-      indent.insert " "
-      for i in [1..level]:
-        indent.insert "-"
+      spacing = " "
     tt.add @[
-      fmt"{indent}{row.name}",
+      fmt"{marker.repeat(level)}{spacing}{row.name}",
       fmt"{row.hours:.3f}",
       fmt"{row.cost:.2f}"
     ]
