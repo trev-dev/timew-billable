@@ -166,7 +166,7 @@ proc addNestedTerminalRows(
     tt.addNestedTerminalRows(row.subtasks, level + 1)
 
 template printSeparator(position: untyped): untyped =
-  ## TODO: Figure out why I had to copy this from nancy
+  ## Copied from nancy.printSeparator as it is currently not exported.
   stdout.write seps.`position Left`
   for i, size in sizes:
     stdout.write seps.horizontal.repeat(size + 2)
