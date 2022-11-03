@@ -220,6 +220,7 @@ func loadCSVTable(t: Table): seq[CSVRow] =
 proc renderCSV(tableRows: Table, config: Config) =
   let report = loadCSVTable tableRows
   report.writeToCsv config.csvName
+  echo fmt"CSV file created: {config.csvName.green}"
 
 proc main() =
   let rawConfigAndEntries = readAll(stdin).split "\n\n"
