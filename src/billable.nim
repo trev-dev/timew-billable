@@ -145,11 +145,12 @@ proc prepareTable(config: Config, rawEntries: RawTimewEntries): Table =
     row.hours = row.subTotalHours()
 
   let totals =
-    TableRow(name: "TOTAL", hours: result.totalHours, cost: result.totalCost)
+    TableRow(name: "Total", hours: result.totalHours, cost: result.totalCost)
   result.add totals
 
-proc loadTerminalTable(tt: var TerminalTable, t: Table, level: int = 0) =
-  const sep = @["%SEP%"]
+proc addNestedTerminalRows(
+  tt: var TerminalTable, t: Table, level = 0, sep = @["%SEP%"]
+) =
   for i, row in t.pairs:
     var spacing: string
     let marker = "—"
@@ -162,7 +163,7 @@ proc loadTerminalTable(tt: var TerminalTable, t: Table, level: int = 0) =
       fmt"{row.hours:.3f}".yellow,
       fmt"{row.cost:.2f}".green
     ]
-    tt.loadTerminalTable(row.subtasks, level + 1)
+    tt.addNestedTerminalRows(row.subtasks, level + 1)
 
 template printSeparator(position: untyped): untyped =
   ## TODO: Figure out why I had to copy this from nancy
@@ -174,7 +175,7 @@ template printSeparator(position: untyped): untyped =
     else:
       stdout.write seps.`position Right` & "\n"
 
-proc echoBillableTable*(
+proc echoBillableTable(
   table: TerminalTable, maxSize = terminalWidth(), seps = boxSeps
 ) =
   ## A modified version of nancy.echoTableSeps that only adds center separators
@@ -199,7 +200,19 @@ proc echoBillableTable*(
 
 proc render(tableRows: Table) =
   var table: TerminalTable
-  table.loadTerminalTable tableRows
+  let subtotals = tableRows[0..^2]
+  let totals = tableRows[^1]
+
+  table.add @["Task".bold, "Hours".bold, "Amount".bold]
+  table.add @["%SEP%"]
+  table.addNestedTerminalRows subtotals
+  table.add @["%SEP%"]
+  table.add @[
+    fmt"{totals.name}".blue.bold,
+    fmt"{totals.hours:.3f}".yellow.bold,
+    fmt"{totals.cost:.2f}".green.bold
+  ]
+
   table.echoBillableTable 80
 
 proc main() =
