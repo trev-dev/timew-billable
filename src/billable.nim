@@ -1,5 +1,5 @@
-import std/[strutils, re, sequtils, times, math, strformat]
-import jsony, nancy
+import std/[strutils, re, sequtils, times, math, strformat, terminal]
+import jsony, nancy, termstyle
 
 type
   ClientSpecificRate = tuple[client: string, rate: float]
@@ -53,7 +53,6 @@ func createConfig(keys: seq[string]): Config =
   return conf
 
 func parseEntryHierarchy(tags: seq[string], pMarker: string): seq[string] =
-  # TODO: Maybe validate taskName based on whitespace
   if tags[0].startsWith pMarker:
     let projectHierarchy = tags[0][pMarker.len..^1].split "."
     let taskName = tags[1]
@@ -100,6 +99,7 @@ func totalHours(t: Table): float =
     result += row.hours
 
 proc parseDuration(e: RawTimeEntry): Duration =
+  # TODO: Figure out why parse may cause side effects
   let fmt = initTimeFormat "yyyyMMdd'T'HHmmss'Z'"
   let stime = e.start.parse fmt
   let etime = e.`end`.parse fmt
@@ -149,22 +149,58 @@ proc prepareTable(config: Config, rawEntries: RawTimewEntries): Table =
   result.add totals
 
 proc loadTerminalTable(tt: var TerminalTable, t: Table, level: int = 0) =
-  for row in t.items:
+  const sep = @["%SEP%"]
+  for i, row in t.pairs:
     var spacing: string
     let marker = "—"
     if level > 0:
       spacing = " "
+    if level == 0 and i != 0:
+      tt.add sep
     tt.add @[
-      fmt"{marker.repeat(level)}{spacing}{row.name}",
-      fmt"{row.hours:.3f}",
-      fmt"{row.cost:.2f}"
+      fmt"{marker.repeat(level)}{spacing}{row.name.blue}",
+      fmt"{row.hours:.3f}".yellow,
+      fmt"{row.cost:.2f}".green
     ]
     tt.loadTerminalTable(row.subtasks, level + 1)
+
+template printSeparator(position: untyped): untyped =
+  ## TODO: Figure out why I had to copy this from nancy
+  stdout.write seps.`position Left`
+  for i, size in sizes:
+    stdout.write seps.horizontal.repeat(size + 2)
+    if i != sizes.high:
+      stdout.write seps.`position Middle`
+    else:
+      stdout.write seps.`position Right` & "\n"
+
+proc echoBillableTable*(
+  table: TerminalTable, maxSize = terminalWidth(), seps = boxSeps
+) =
+  ## A modified version of nancy.echoTableSeps that only adds center separators
+  ## between grouped top-level rows.
+  let sizes = table.getColumnSizes(maxSize - 4, padding = 3)
+  printSeparator(top)
+  for k, entry in table.entries(sizes):
+    var separator = false
+    for _, row in entry():
+      for i, cell in row():
+        separator = cell.find(re"%SEP%") > -1 and i == 0
+        if separator: break
+
+        if i == 0: stdout.write seps.vertical & " "
+        stdout.write cell &
+          (if i != sizes.high: " " & seps.vertical & " " else: "")
+      if not separator:
+        stdout.write " " & seps.vertical & "\n"
+    if separator:
+      printSeparator center
+  printSeparator(bottom)
 
 proc render(tableRows: Table) =
   var table: TerminalTable
   table.loadTerminalTable tableRows
-  table.echoTable 80
+  table.echoBillableTable 80
 
 proc main() =
   let rawConfigAndEntries = readAll(stdin).split "\n\n"
@@ -177,6 +213,6 @@ proc main() =
   let jsonData = rawConfigAndEntries[1].fromJson RawTimewEntries
   let table = config.prepareTable jsonData
   table.render()
-  
+
 when isMainModule:
   main()
