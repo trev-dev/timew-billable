@@ -161,8 +161,8 @@ proc addNestedTerminalRows(
     if level == 0 and i != 0:
       tt.add sep
     tt.add @[
-      fmt"{marker.repeat(level)}{spacing}{row.name.blue}",
-      fmt"{row.hours:.3f}".yellow,
+      fmt"{marker.repeat(level)}{spacing}{row.name.yellow}",
+      fmt"{row.hours:.3f}".blue,
       fmt"{row.cost:.2f}".green
     ]
     tt.addNestedTerminalRows(row.subtasks, level + 1)
@@ -210,8 +210,8 @@ proc renderTerminalTable(tableRows: Table) =
   table.addNestedTerminalRows subtotals
   table.add @["%SEP%"]
   table.add @[
-    fmt"{totals.name}".blue.bold,
-    fmt"{totals.hours:.3f}".yellow.bold,
+    fmt"{totals.name}".yellow.bold,
+    fmt"{totals.hours:.3f}".blue.bold,
     fmt"{totals.cost:.2f}".green.bold
   ]
 
