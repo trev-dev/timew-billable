@@ -142,22 +142,25 @@ proc prepareTable(config: Config, rawEntries: RawTimewEntries): Table =
 
   result.add totals
 
-proc addNestedTerminalRows(
+func depthMarker(depth: int, marker = "—"): string =
+  var spacing = ""
+  if depth > 0:
+    spacing = " "
+
+  fmt"{marker.repeat(depth)}{spacing}"
+
+proc nestedTerminalRows(
   tt: var TerminalTable, t: Table, level = 0, sep = @["%SEP%"]
 ) =
   for i, row in t.pairs:
-    var spacing: string
-    let marker = "—"
-    if level > 0:
-      spacing = " "
     if level == 0 and i != 0:
       tt.add sep
     tt.add @[
-      fmt"{marker.repeat(level)}{spacing}{row.name.yellow}",
+      fmt"{level.depthMarker}{row.name.yellow}",
       fmt"{row.hours:.2f}".blue,
       fmt"{row.cost:.2f}".green
     ]
-    tt.addNestedTerminalRows(row.subtasks, level + 1)
+    tt.nestedTerminalRows(row.subtasks, level + 1)
 
 template printSeparator(position: untyped): untyped =
   ## Copied from nancy.printSeparator as it is currently not exported.
@@ -199,7 +202,7 @@ proc renderTerminalTable(tableRows: Table) =
 
   table.add @["Task".bold, "Hours".bold, "Amount".bold]
   table.add @["%SEP%"]
-  table.addNestedTerminalRows subtotals
+  table.nestedTerminalRows subtotals
   table.add @["%SEP%"]
   table.add @[
     fmt"{totals.name}".yellow.bold,
@@ -209,16 +212,20 @@ proc renderTerminalTable(tableRows: Table) =
 
   table.echoBillableTable 80
 
-func loadCSVTable(t: Table): seq[CSVRow] =
+func nestedCSVRows(t: Table, level = 0): seq[CSVRow] =
   for row in t.items:
     let csvRow = CSVRow(
-      name: row.name, hours: fmt"{row.hours:.2f}", cost: fmt"{row.cost:.2f}"
+      name: fmt"{level.depthMarker}{row.name}",
+      hours: fmt"{row.hours:.2f}",
+      cost: fmt"{row.cost:.2f}"
     )
     result.add csvRow
-    result.add(loadCSVTable(row.subtasks))
+    result.add(nestedCSVRows(row.subtasks, level + 1))
 
 proc renderCSV(tableRows: Table, config: Config) =
-  let report = loadCSVTable tableRows
+  var report: seq[CSVRow] =
+    @[CSVRow(name: "Task", hours: "Hours", cost: "Amount")]
+  report = report.concat nestedCSVRows(tableRows)
   report.writeToCsv config.csvName
   echo fmt"CSV file created: {config.csvName.green}"
 
