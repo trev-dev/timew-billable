@@ -1,5 +1,5 @@
 import std/[strutils, re, sequtils, times, math, strformat, terminal]
-import jsony, nancy, termstyle
+import jsony, nancy, termstyle, csvtools
 
 type
   ClientSpecificRate = tuple[client: string, rate: float]
@@ -7,6 +7,7 @@ type
     projectMarker: string
     billable: float
     render: string
+    csvName: string
     clients: seq[ClientSpecificRate]
 
   RawTimeEntry =
@@ -19,6 +20,9 @@ type
     hours: float
     cost: float
     subtasks: seq[TableRow]
+
+  CSVRow = object
+    name, hours, cost: string
 
 func stripString(s:string):string = s.strip()
 
@@ -33,6 +37,8 @@ func coerceFloat(s:string): float =
 func createConfig(keys: seq[string]): Config =
   var conf: Config
   conf.projectMarker = "#"
+  conf.render = "terminal"
+  conf.csvName = "billable-report.csv"
 
   for i in keys:
     let kvpair = i
@@ -49,6 +55,7 @@ func createConfig(keys: seq[string]): Config =
       case conf_keys[1]
         of "project_marker": conf.projectMarker = kvpair[1]
         of "render": conf.render = kvpair[1]
+        of "csvName": conf.csvName = kvpair[1]
         else:
           let rate = coerceFloat kvpair[1]
           conf.clients.add (client: conf_keys[1], rate: rate)
@@ -202,8 +209,17 @@ proc renderTerminalTable(tableRows: Table) =
 
   table.echoBillableTable 80
 
-proc renderCSV(tableRows: Table) =
-  echo "can haz csv?"
+func loadCSVTable(t: Table): seq[CSVRow] =
+  for row in t.items:
+    let csvRow = CSVRow(
+      name: row.name, hours: fmt"{row.hours:.2f}", cost: fmt"{row.cost:.2f}"
+    )
+    result.add csvRow
+    result.add(loadCSVTable(row.subtasks))
+
+proc renderCSV(tableRows: Table, config: Config) =
+  let report = loadCSVTable tableRows
+  report.writeToCsv config.csvName
 
 proc main() =
   let rawConfigAndEntries = readAll(stdin).split "\n\n"
@@ -218,7 +234,9 @@ proc main() =
 
   case config.render
     of "csv":
-      table.renderCSV()
+      table.renderCSV(config)
+    of "terminal":
+      table.renderTerminalTable()
     else:
       table.renderTerminalTable()
 
