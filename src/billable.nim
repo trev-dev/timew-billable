@@ -80,18 +80,6 @@ func billableRate(c: Config, e: RawTimeEntry): float =
       return c.rate
   return c.billable
 
-func subTotalHours(r: var TableRow): float =
-  result = r.hours
-  for task in r.subtasks.mitems:
-    task.hours = task.subTotalHours()
-    result += task.hours
-
-func subTotalCost(r: var TableRow): float =
-  result = r.cost
-  for task in r.subtasks.mitems:
-    task.cost = task.subTotalCost()
-    result += task.cost
-
 func totalCost(t: Table): float =
   for row in t:
     result += row.cost
@@ -124,13 +112,13 @@ proc addOrUpdateRow(
   else:
     newRow = TableRow(name: taskName)
 
+  let rate = config.billableRate entry
+  let hours = entry.parseDuration.toBillableHours
+  newRow.hours += hours
+  newRow.cost += round(hours * rate, 2)
+
   if nextTasks.len > 0:
     newRow.subtasks.addOrUpdateRow(entry, nextTasks, config)
-  else:
-    let rate = config.billableRate entry
-    let hours = entry.parseDuration.toBillableHours
-    newRow.hours += hours
-    newRow.cost += round(hours * rate, 2)
 
   if rowExists:
     table[idx] = newRow
@@ -142,12 +130,9 @@ proc prepareTable(config: Config, rawEntries: RawTimewEntries): Table =
     let entryHierarcy = entry.tags.parseEntryHierarchy config.projectMarker
     result.addOrUpdateRow(entry, entryHierarcy, config)
 
-  for row in result.mitems:
-    row.cost = row.subTotalCost()
-    row.hours = row.subTotalHours()
-
   let totals =
     TableRow(name: "Total", hours: result.totalHours, cost: result.totalCost)
+
   result.add totals
 
 proc addNestedTerminalRows(
