@@ -72,7 +72,7 @@ func findByName[T](s: seq[T], n: string): int =
   result = s.find(proc (r: TableRow): bool = r.name == n)
 
 func toBillableHours(d: Duration): float =
-  round(d.inSeconds.toBiggestFloat / 60.0 / 60.0, 3)
+  (ceil(d.inSeconds.toBiggestFloat / 60.0 / 60.0 * 100)) / 100
 
 func billableRate(c: Config, e: RawTimeEntry): float =
   for c in c.clients.items:
