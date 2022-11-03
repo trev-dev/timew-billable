@@ -6,6 +6,7 @@ type
   Config = tuple
     projectMarker: string
     billable: float
+    render: string
     clients: seq[ClientSpecificRate]
 
   RawTimeEntry =
@@ -47,6 +48,7 @@ func createConfig(keys: seq[string]): Config =
     else:
       case conf_keys[1]
         of "project_marker": conf.projectMarker = kvpair[1]
+        of "render": conf.render = kvpair[1]
         else:
           let rate = coerceFloat kvpair[1]
           conf.clients.add (client: conf_keys[1], rate: rate)
@@ -198,7 +200,7 @@ proc echoBillableTable(
       printSeparator center
   printSeparator(bottom)
 
-proc render(tableRows: Table) =
+proc renderTerminalTable(tableRows: Table) =
   var table: TerminalTable
   let subtotals = tableRows[0..^2]
   let totals = tableRows[^1]
@@ -215,6 +217,9 @@ proc render(tableRows: Table) =
 
   table.echoBillableTable 80
 
+proc renderCSV(tableRows: Table) =
+  echo "can haz csv?"
+
 proc main() =
   let rawConfigAndEntries = readAll(stdin).split "\n\n"
 
@@ -225,7 +230,12 @@ proc main() =
   let config = createConfig configStrings
   let jsonData = rawConfigAndEntries[1].fromJson RawTimewEntries
   let table = config.prepareTable jsonData
-  table.render()
+
+  case config.render
+    of "csv":
+      table.renderCSV()
+    else:
+      table.renderTerminalTable()
 
 when isMainModule:
   main()
