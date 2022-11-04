@@ -4,17 +4,28 @@ A [Timewarrior](https://timewarrior.net/) report script that will help you organ
 
 This project was inspired by the venerable Emacs org-mode and its built-in clock tables. The goal is to create some of those features for Timewarrior.
 
+![A screenshot of billable](./screenshot.png)
+
 Requires Nim with Nimble, version 1.6.6 or compatible.
 
 Version 0.1.0
 
 ## Contents
 
-1. <a href="#start">Getting Started</a>
-2. <a href="#config">Configuration</a>
-3. <a href="#example">Example</a>
-4. <a href="#caveats">Caveats</a>
-5. <a href="#contrib">Contributing</a>
+1. <a href="#features">Features</a>
+2. <a href="#start">Getting Started</a>
+3. <a href="#config">Configuration</a>
+4. <a href="#example">Example</a>
+5. <a href="#caveats">Caveats</a>
+6. <a href="#contrib">Contributing</a>
+
+<div id="features"></div>
+
+## Features
+
+- Generates nested reports for structured projects/subtasks
+- Pretty terminal table output
+- CSV export/file dump
 
 <div id="start"></div>
 

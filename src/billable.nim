@@ -158,16 +158,6 @@ proc nestedTerminalRows(
     ]
     tt.nestedTerminalRows(row.subtasks, level + 1)
 
-template printSeparator(position: untyped): untyped =
-  ## Copied from nancy.printSeparator as it is currently not exported.
-  stdout.write seps.`position Left`
-  for i, size in sizes:
-    stdout.write seps.horizontal.repeat(size + 2)
-    if i != sizes.high:
-      stdout.write seps.`position Middle`
-    else:
-      stdout.write seps.`position Right` & "\n"
-
 proc echoBillableTable(
   table: TerminalTable, maxSize = terminalWidth(), seps = boxSeps
 ) =
