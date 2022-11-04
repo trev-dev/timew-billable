@@ -55,7 +55,7 @@ func createConfig(keys: seq[string]): Config =
       case conf_keys[1]
         of "project_marker": conf.projectMarker = kvpair[1]
         of "render": conf.render = kvpair[1]
-        of "csvName": conf.csvName = kvpair[1]
+        of "csv_name": conf.csvName = kvpair[1]
         else:
           let rate = coerceFloat kvpair[1]
           conf.clients.add (client: conf_keys[1], rate: rate)
