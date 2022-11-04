@@ -1,4 +1,4 @@
-import std/[strutils, re, sequtils, times, math, strformat, terminal]
+import std/[strutils, re, sequtils, times, math, strformat, terminal, rationals]
 import jsony, nancy, termstyle, csvtools
 
 type
@@ -17,8 +17,8 @@ type
   Table = seq[TableRow]
   TableRow = object
     name: string
-    hours: float
-    cost: float
+    hours: Rational[int]
+    cost: Rational[int]
     subtasks: seq[TableRow]
 
   CSVRow = object
@@ -33,6 +33,10 @@ func coerceFloat(s:string): float =
     let message =
       fmt "Failed to parse config! Value {s} should be a float type."
     assert(false, message)
+
+func truncate[T](r: Rational[T], p: int = 0): float =
+  let places = (10^p).initRational 1
+  (r * places).toInt / places.toInt
 
 func createConfig(keys: seq[string]): Config =
   var conf: Config
@@ -75,27 +79,32 @@ func find[T](s: seq[T], pred: proc (i: T): bool): int =
     if pred(itm):
       return idx
 
-func toBillableHours(d: Duration): float =
-  (d.inMinutes.float / 60.0 * 100).floor / 100
+func findByName[T](s: seq[T], n: string): int =
+  result = s.find(proc (r: TableRow): bool = r.name == n)
 
-func billableRate(c: Config, e: RawTimeEntry): float =
+func toBillableHours(d: Duration): Rational[int] =
+  d.inSeconds.int // 3600
+
+func billableRate(c: Config, e: RawTimeEntry): Rational[int] =
   for c in c.clients.items:
     if e.tags.find(c.client) > -1:
-      return c.rate
-  return c.billable
+      return c.rate.toRational
+  return c.billable.toRational
 
-func totalCost(t: Table): float =
+func totalCost(t: Table): Rational[int] =
+  result = 0.initRational 1
   for row in t:
     result += row.cost
 
-func totalHours(t: Table): float =
+func totalHours(t: Table): Rational[int] =
+  result = 0.initRational 1
   for row in t:
     result += row.hours
 
 proc parseDuration(e: RawTimeEntry): Duration =
-  let f = initTimeFormat "yyyyMMdd'T'HHmmss'Z'"
-  let stime = e.start.parse f
-  let etime = e.`end`.parse f
+  let fmt = initTimeFormat "yyyyMMdd'T'HHmmss'Z'"
+  let stime = e.start.parse fmt
+  let etime = e.`end`.parse fmt
   etime - stime
 
 proc addOrUpdateRow(
@@ -106,19 +115,19 @@ proc addOrUpdateRow(
 ) =
   let taskName = hierarchy[0]
   let nextTasks = hierarchy[1..^1]
-  let idx = table.find proc (r: TableRow): bool = r.name == taskName
+  let idx = table.findByName taskName
   let rowExists = idx > -1
 
   var newRow: TableRow
   if rowExists:
     newRow = table[idx]
   else:
-    newRow = TableRow(name: taskName)
+    newRow = TableRow(name: taskName, hours: 0.toRational, cost: 0.toRational)
 
   let rate = config.billableRate entry
   let hours = entry.parseDuration.toBillableHours
   newRow.hours += hours
-  newRow.cost += round(hours * rate, 2)
+  newRow.cost = newRow.hours * rate
 
   if nextTasks.len > 0:
     newRow.subtasks.addOrUpdateRow(entry, nextTasks, config)
@@ -151,12 +160,23 @@ proc nestedTerminalRows(
   for i, row in t.pairs:
     if level == 0 and i != 0:
       tt.add sep
+    echo row.cost.truncate 5
     tt.add @[
       fmt"{level.depthMarker}{row.name.yellow}",
-      fmt"{row.hours:.2f}".blue,
-      fmt"{row.cost:.2f}".green
+      fmt"{row.hours.truncate(2):.2f}".blue,
+      fmt"{row.cost.truncate(2):.2f}".green
     ]
     tt.nestedTerminalRows(row.subtasks, level + 1)
+
+template printSeparator(position: untyped): untyped =
+  ## Copied from nancy.printSeparator as it is currently not exported.
+  stdout.write seps.`position Left`
+  for i, size in sizes:
+    stdout.write seps.horizontal.repeat(size + 2)
+    if i != sizes.high:
+      stdout.write seps.`position Middle`
+    else:
+      stdout.write seps.`position Right` & "\n"
 
 proc echoBillableTable(
   table: TerminalTable, maxSize = terminalWidth(), seps = boxSeps
@@ -190,10 +210,11 @@ proc renderTerminalTable(tableRows: Table) =
   table.add @["%SEP%"]
   table.nestedTerminalRows subtotals
   table.add @["%SEP%"]
+
   table.add @[
     fmt"{totals.name}".yellow.bold,
-    fmt"{totals.hours:.2f}".blue.bold,
-    fmt"{totals.cost:.2f}".green.bold
+    fmt"{totals.hours.truncate(2):.2f}".blue.bold,
+    fmt"{totals.cost.truncate(2):.2f}".green.bold
   ]
 
   table.echoBillableTable 80
@@ -202,8 +223,8 @@ func nestedCSVRows(t: Table, level = 0): seq[CSVRow] =
   for row in t.items:
     let csvRow = CSVRow(
       name: fmt"{level.depthMarker}{row.name}",
-      hours: fmt"{row.hours:.2f}",
-      cost: fmt"{row.cost:.2f}"
+      hours: fmt"{row.hours.truncate(2):.2f}",
+      cost: fmt"{row.cost.truncate(2):.2f}"
     )
     result.add csvRow
     result.add(nestedCSVRows(row.subtasks, level + 1))
