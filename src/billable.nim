@@ -76,7 +76,7 @@ func find[T](s: seq[T], pred: proc (i: T): bool): int =
       return idx
 
 func toBillableHours(d: Duration): float =
-  (d.inMinutes.float / 60.0 * 100).floor / 100
+  (d.inSeconds.float / 3600 * 100).floor / 100
 
 func billableRate(c: Config, e: RawTimeEntry): float =
   for c in c.clients.items:
