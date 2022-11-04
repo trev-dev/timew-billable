@@ -8,7 +8,7 @@ This project was inspired by the venerable Emacs org-mode and its built-in clock
 
 Requires Nim with Nimble, version 1.6.6 or compatible.
 
-Version 0.2.1
+Version 0.2.2
 
 ## Contents
 
@@ -112,10 +112,21 @@ The only limit to the nested hierarchy is your sanity :) You could do something 
 
 ## Caveats
 
-There are two things to keep in mind while using this extension:
+There are two things to keep in mind while using this extension.
 
-1. The tag order of your timewarrior intervals is important.  They should all have the same tags in the same order.  This extension always expects the first tag to be the description or the project tag. If there is a project tag, the task description falls back to the second tag.  All other tags after the project/description may be used as client rate exceptions.  _Timewarrior does not help you preserve tag order_.  If you are not careful with the `tag` or `untag` command, reports might get confused.
-2. Accuracy for billable hours is calculated by the minute and truncated at the hundredth (2nd) decimal place.  This sacrifice is made to help the table add up from bottom to top, or when multiplying hours against the rate at any given point in the table.  Without this, rounding errors will occur and the table will seem inconsistent.
+1. Timewarrior tag order.
+
+   The tag order of your timewarrior intervals is important.  They should all have the same tags in the same order.
+
+   This extension always expects the first tag to be the description or the project tag. If there is a project tag, the task description falls back to the second tag.
+
+   All other tags after the project/description may be used as client rate exceptions.  _Timewarrior does not help you preserve tag order_.  If you are not careful with the `tag` or `untag` command, reports might miss data or get confusing.
+
+2. Billable hour accuracy is truncated.
+
+   Billable hours are calculated by the second and truncated at the hundredth (2nd) decimal place.  This sacrifice is made to help the table add up from bottom to top, or when multiplying hours against the rate at any given point in the table.
+
+   Without this, rounding errors will occur and the table will seem inconsistent.  Generally speaking the table is accurate enough.
 
 I am open to ideas and contributions.
 
