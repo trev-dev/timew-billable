@@ -54,6 +54,7 @@ Here are the configuration options:
 * `billable.<client>` - Specify a separate billable rate tag for any given task/project.
 * `billable.project_marker` - Specify a marker to flag the time entry as a project with a specific hierarchy.  
   Default: `#`
+* `billable.task_marker` - Specifiy a marker to flag a specific tag as the task name.  No marker is set by default.  The default behavior is to find the first tag with spaces in it.
 * `billable.render` - The render method to use for the report.  Options supported are `terminal` and `csv`.  
   Default: `terminal`
 
@@ -112,17 +113,7 @@ The only limit to the nested hierarchy is your sanity :) You could do something 
 
 ## Caveats
 
-There are two things to keep in mind while using this extension.
-
-1. Timewarrior tag order.
-
-   The tag order of your timewarrior intervals is important.  They should all have the same tags in the same order.
-
-   This extension always expects the first tag to be the description or the project tag. If there is a project tag, the task description falls back to the second tag.
-
-   All other tags after the project/description may be used as client rate exceptions.  _Timewarrior does not help you preserve tag order_.  If you are not careful with the `tag` or `untag` command, reports might miss data or get confusing.
-
-2. Billable hour accuracy is truncated.
+1. Billable hour accuracy is truncated.
 
    Billable hours are calculated by the second and truncated at the hundredth (2nd) decimal place.  This sacrifice is made to help the table add up from bottom to top, or when multiplying hours against the rate at any given point in the table.
 

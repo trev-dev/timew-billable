@@ -5,6 +5,7 @@ type
   ClientSpecificRate = tuple[client: string, rate: float]
   Config = tuple
     projectMarker: string
+    taskMarker: string
     billable: float
     render: string
     csvName: string
@@ -52,8 +53,9 @@ func createConfig(keys: seq[string]): Config =
       conf.billable = coerceFloat kvpair[1]
 
     else:
-      case conf_keys[1]
+      case conf_keys[1] 
         of "project_marker": conf.projectMarker = kvpair[1]
+        of "task_marker": conf.taskMarker = kvpair[1]
         of "render": conf.render = kvpair[1]
         of "csv_name": conf.csvName = kvpair[1]
         else:
