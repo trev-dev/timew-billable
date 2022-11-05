@@ -35,6 +35,28 @@ func coerceFloat(s:string): float =
       fmt "Failed to parse config! Value {s} should be a float type."
     assert(false, message)
 
+func find[T](s: seq[T], pred: proc (i: T): bool{.noSideEffect.}): int =
+  result = -1
+  for idx, itm in s.pairs:
+    if pred(itm):
+      return idx
+
+func findByString[T](s: seq[T], sub: char|string): int =
+  result = -1
+  for idx, itm in s.pairs:
+    if itm.find(sub) > -1:
+      return idx
+
+func findConfTag(t: seq[string], prefix: string): int =
+  t.find proc (s: string): bool = s.startsWith prefix
+
+proc findTaskName(t: seq[string], prefix: string): int =
+  result = -1
+  if prefix != "":
+    result = t.findConfTag prefix
+  if result == -1:
+    result = t.findByString ' '
+
 func createConfig(keys: seq[string]): Config =
   var conf: Config
   conf.projectMarker = "#"
@@ -63,19 +85,20 @@ func createConfig(keys: seq[string]): Config =
           conf.clients.add (client: conf_keys[1], rate: rate)
   return conf
 
-func parseEntryHierarchy(tags: seq[string], pMarker: string): seq[string] =
-  if tags[0].startsWith pMarker:
-    let projectHierarchy = tags[0][pMarker.len..^1].split "."
-    let taskName = tags[1]
-    result = projectHierarchy.concat @[taskName]
-  else:
-    result.add tags[0]
+func parseEntryHierarchy(tags: seq[string], conf: Config): seq[string] =
+  let project = tags.findConfTag conf.projectMarker
+  let taskName = tags.findTaskName conf.taskMarker
 
-func find[T](s: seq[T], pred: proc (i: T): bool): int =
-  result = -1
-  for idx, itm in s.pairs:
-    if pred(itm):
-      return idx
+  if project > -1:
+    let projectHierarchy = tags[project][conf.projectMarker.len..^1].split "."
+    result = result.concat projectHierarchy
+
+  if taskName > -1:
+    var tn = tags[taskName]
+    if tn.startsWith conf.taskMarker: tn = tn[conf.taskMarker.len..^1]
+    result.add tn
+  else:
+    result.add (if project <= 0: tags[0] else: tags[project + 1])
 
 func toBillableHours(d: Duration): float =
   (d.inSeconds.float / 3600 * 100).floor / 100
@@ -132,7 +155,7 @@ proc addOrUpdateRow(
 
 proc prepareTable(config: Config, rawEntries: RawTimewEntries): Table =
   for entry in rawEntries.items:
-    let entryHierarcy = entry.tags.parseEntryHierarchy config.projectMarker
+    let entryHierarcy = entry.tags.parseEntryHierarchy config
     result.addOrUpdateRow(entry, entryHierarcy, config)
 
   let totals =
