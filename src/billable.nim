@@ -120,7 +120,11 @@ func totalHours(t: Table): float =
 proc parseDuration(e: RawTimeEntry): Duration =
   let f = initTimeFormat "yyyyMMdd'T'HHmmss'Z'"
   let stime = e.start.parse f
-  let etime = e.`end`.parse f
+  var etime = stime
+
+  if e.`end` != "":
+    etime = e.`end`.parse f
+
   etime - stime
 
 proc addOrUpdateRow(
