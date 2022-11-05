@@ -8,7 +8,7 @@ This project was inspired by the venerable Emacs org-mode and its built-in clock
 
 Requires Nim with Nimble, version 1.6.6 or compatible.
 
-Version 0.2.2
+Version 0.2.3
 
 ## Contents
 

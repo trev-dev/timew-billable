@@ -1,6 +1,6 @@
 # Package
 
-version       = "0.2.2"
+version       = "0.2.3"
 author        = "Trevor Richards <trev@trevdev.ca>"
 description   = "timew-billable"
 license       = "GPL3"
