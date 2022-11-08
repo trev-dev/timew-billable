@@ -6,7 +6,7 @@ type
 
   RenderKind = enum rkTerminal = "terminal", rkCsv = "csv"
 
-  Config = tuple
+  Config = object
     projectMarker: string
     taskMarker: string
     billable: float
@@ -27,6 +27,17 @@ type
 
   CSVRow = object
     name, hours, cost: string
+
+const defaultConfig = Config(
+  projectMarker: "#",
+  taskMarker: "",
+  billable: 0,
+  render: rkTerminal,
+  csvName: "billable-report.csv",
+  clients: @[],
+)
+
+var config = defaultConfig
 
 func stripString(s:string):string = s.strip()
 
@@ -50,21 +61,17 @@ func findByString[T](s: seq[T], sub: char|string): int =
     if itm.find(sub) > -1:
       return idx
 
-func findConfTag(t: seq[string], prefix: string): int =
+func findConfTag(t: seq[string], prefix = config.projectMarker): int =
   t.find proc (s: string): bool = s.startsWith prefix
 
-proc findTaskName(t: seq[string], prefix: string): int =
+proc findTaskName(t: seq[string], prefix = config.taskMarker): int =
   result = -1
   if prefix != "":
     result = t.findConfTag prefix
   if result == -1:
     result = t.findByString ' '
 
-func createConfig(keys: seq[string]): Config =
-  var conf: Config
-  conf.projectMarker = "#"
-  conf.render = rkTerminal
-  conf.csvName = "billable-report.csv"
+proc updateConfig(keys: seq[string]) =
 
   for i in keys:
     let kvpair = i
@@ -75,30 +82,29 @@ func createConfig(keys: seq[string]): Config =
 
     let confKeys = kvpair[0].split(".", 1)
     if len(confKeys) == 1:
-      conf.billable = coerceFloat kvpair[1]
+      config.billable = coerceFloat kvpair[1]
 
     else:
       case confKeys[1] 
-        of "project_marker": conf.projectMarker = kvpair[1]
-        of "task_marker": conf.taskMarker = kvpair[1]
-        of "render": conf.render = parseEnum[RenderKind](kvpair[1])
-        of "csv_name": conf.csvName = kvpair[1]
+        of "project_marker": config.projectMarker = kvpair[1]
+        of "task_marker": config.taskMarker = kvpair[1]
+        of "render": config.render = parseEnum[RenderKind](kvpair[1])
+        of "csv_name": config.csvName = kvpair[1]
         else:
           let rate = coerceFloat kvpair[1]
-          conf.clients.add (client: confKeys[1], rate: rate)
-  return conf
+          config.clients.add (client: confKeys[1], rate: rate)
 
-func parseEntryHierarchy(tags: seq[string], conf: Config): seq[string] =
-  let project = tags.findConfTag conf.projectMarker
-  let taskName = tags.findTaskName conf.taskMarker
+proc parseEntryHierarchy(tags: seq[string]): seq[string] =
+  let project = tags.findConfTag 
+  let taskName = tags.findTaskName
 
   if project > -1:
-    let projectHierarchy = tags[project][conf.projectMarker.len..^1].split "."
+    let projectHierarchy = tags[project][config.projectMarker.len..^1].split "."
     result = result.concat projectHierarchy
 
   if taskName > -1:
     var tn = tags[taskName]
-    if tn.startsWith conf.taskMarker: tn = tn[conf.taskMarker.len..^1]
+    if tn.startsWith config.taskMarker: tn = tn[config.taskMarker.len..^1]
     result.add tn
   else:
     result.add (if project <= 0: tags[0] else: tags[project + 1])
@@ -106,11 +112,11 @@ func parseEntryHierarchy(tags: seq[string], conf: Config): seq[string] =
 func toBillableHours(d: Duration): float =
   (d.inSeconds.float / 3600 * 100).floor / 100
 
-func billableRate(c: Config, e: RawTimeEntry): float =
-  for c in c.clients.items:
+proc billableRate(e: RawTimeEntry): float =
+  for c in config.clients:
     if e.tags.find(c.client) > -1:
       return c.rate
-  return c.billable
+  return config.billable
 
 func totalCost(t: Table): float =
   for row in t:
@@ -134,7 +140,6 @@ proc addOrUpdateRow(
   table: var Table,
   entry: RawTimeEntry,
   hierarchy: seq[string],
-  config: Config
 ) =
   let taskName = hierarchy[0]
   let nextTasks = hierarchy[1..^1]
@@ -147,23 +152,23 @@ proc addOrUpdateRow(
   else:
     newRow = TableRow(name: taskName)
 
-  let rate = config.billableRate entry
+  let rate = billableRate entry
   let hours = entry.parseDuration.toBillableHours
   newRow.hours += hours
   newRow.cost += round(hours * rate, 2)
 
   if nextTasks.len > 0:
-    newRow.subtasks.addOrUpdateRow(entry, nextTasks, config)
+    newRow.subtasks.addOrUpdateRow(entry, nextTasks)
 
   if rowExists:
     table[idx] = newRow
   else:
     table.add newRow
 
-proc prepareTable(config: Config, rawEntries: RawTimewEntries): Table =
-  for entry in rawEntries.items:
-    let entryHierarcy = entry.tags.parseEntryHierarchy config
-    result.addOrUpdateRow(entry, entryHierarcy, config)
+proc prepareTable(rawEntries: RawTimewEntries): Table =
+  for entry in rawEntries:
+    let entryHierarcy = entry.tags.parseEntryHierarchy
+    result.addOrUpdateRow(entry, entryHierarcy)
 
   let totals =
     TableRow(name: "Total", hours: result.totalHours, cost: result.totalCost)
@@ -240,7 +245,7 @@ func nestedCSVRows(t: Table, level = 0): seq[CSVRow] =
     result.add csvRow
     result.add(nestedCSVRows(row.subtasks, level + 1))
 
-proc renderCSV(tableRows: Table, config: Config) =
+proc renderCSV(tableRows: Table) =
   var report: seq[CSVRow] =
     @[CSVRow(name: "Task", hours: "Hours", cost: "Amount")]
   report = report.concat nestedCSVRows(tableRows)
@@ -254,15 +259,15 @@ proc main() =
     .findAll(re"(^|\n)billable.*")
     .map(stripString)
 
-  let config = createConfig configStrings
+  updateConfig configStrings
   let jsonData = rawConfigAndEntries[1].fromJson RawTimewEntries
-  let table = config.prepareTable jsonData
+  let table = prepareTable jsonData
 
   case config.render
     of rkCsv:
-      table.renderCSV(config)
+      table.renderCSV
     of rkTerminal:
-      table.renderTerminalTable()
+      table.renderTerminalTable
 
 when isMainModule:
   main()
