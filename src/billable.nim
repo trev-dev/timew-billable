@@ -78,12 +78,12 @@ proc updateConfig(keys: seq[string]) =
       config.billable = coerceFloat kvpair[1]
 
     else:
-      case confKeys[1]
-        of "project_marker": config.projectMarker = kvpair[1]
-        of "task_marker": config.taskMarker = kvpair[1]
+      case confKeys[1].toLowerAscii.replace("_", "")
+        of "projectmarker": config.projectMarker = kvpair[1]
+        of "taskmarker": config.taskMarker = kvpair[1]
         of "render": config.render = parseEnum[RenderKind](kvpair[1])
-        of "csv_name": config.csvName = kvpair[1]
-        of "depth_marker": config.depthMarker = kvpair[1]
+        of "csvname": config.csvName = kvpair[1]
+        of "depthmarker": config.depthMarker = kvpair[1]
         else:
           let rate = coerceFloat kvpair[1]
           config.clients.add (client: confKeys[1], rate: rate)
