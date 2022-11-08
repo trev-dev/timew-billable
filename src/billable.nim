@@ -3,11 +3,14 @@ import jsony, nancy, termstyle, csvtools
 
 type
   ClientSpecificRate = tuple[client: string, rate: float]
+
+  RenderKind = enum rkTerminal = "terminal", rkCsv = "csv"
+
   Config = tuple
     projectMarker: string
     taskMarker: string
     billable: float
-    render: string
+    render: RenderKind
     csvName: string
     clients: seq[ClientSpecificRate]
 
@@ -60,7 +63,7 @@ proc findTaskName(t: seq[string], prefix: string): int =
 func createConfig(keys: seq[string]): Config =
   var conf: Config
   conf.projectMarker = "#"
-  conf.render = "terminal"
+  conf.render = rkTerminal
   conf.csvName = "billable-report.csv"
 
   for i in keys:
@@ -70,19 +73,19 @@ func createConfig(keys: seq[string]): Config =
 
     if kvpair[1] == "": continue
 
-    let conf_keys = kvpair[0].split(".", 1)
-    if len(conf_keys) == 1:
+    let confKeys = kvpair[0].split(".", 1)
+    if len(confKeys) == 1:
       conf.billable = coerceFloat kvpair[1]
 
     else:
-      case conf_keys[1] 
+      case confKeys[1] 
         of "project_marker": conf.projectMarker = kvpair[1]
         of "task_marker": conf.taskMarker = kvpair[1]
-        of "render": conf.render = kvpair[1]
+        of "render": conf.render = parseEnum[RenderKind](kvpair[1])
         of "csv_name": conf.csvName = kvpair[1]
         else:
           let rate = coerceFloat kvpair[1]
-          conf.clients.add (client: conf_keys[1], rate: rate)
+          conf.clients.add (client: confKeys[1], rate: rate)
   return conf
 
 func parseEntryHierarchy(tags: seq[string], conf: Config): seq[string] =
@@ -256,11 +259,9 @@ proc main() =
   let table = config.prepareTable jsonData
 
   case config.render
-    of "csv":
+    of rkCsv:
       table.renderCSV(config)
-    of "terminal":
-      table.renderTerminalTable()
-    else:
+    of rkTerminal:
       table.renderTerminalTable()
 
 when isMainModule:
