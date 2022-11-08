@@ -1,4 +1,4 @@
-import std/[strutils, re, sequtils, times, math, strformat, terminal]
+import std/[strutils, re, sequtils, times, math, strformat, terminal, sugar]
 import jsony, nancy, termstyle, csvtools
 
 type
@@ -12,6 +12,7 @@ type
     billable: float
     render: RenderKind
     csvName: string
+    depthMarker: string
     clients: seq[ClientSpecificRate]
 
   RawTimeEntry =
@@ -35,48 +36,40 @@ const defaultConfig = Config(
   render: rkTerminal,
   csvName: "billable-report.csv",
   clients: @[],
+  depthMarker: "—",
 )
 
 var config = defaultConfig
 
-func stripString(s:string):string = s.strip()
 
-func coerceFloat(s:string): float =
+func coerceFloat(s: string): float =
   try:
     return parseFloat(s)
   except ValueError:
-    let message =
-      fmt "Failed to parse config! Value {s} should be a float type."
-    assert(false, message)
+    assert false, &"Failed to parse config! Value {s} should be a float type."
 
-func find[T](s: seq[T], pred: proc (i: T): bool{.noSideEffect.}): int =
+func find[T](s: seq[T], pred: (T) -> bool): int =
   result = -1
   for idx, itm in s.pairs:
     if pred(itm):
       return idx
 
-func findByString[T](s: seq[T], sub: char|string): int =
-  result = -1
-  for idx, itm in s.pairs:
-    if itm.find(sub) > -1:
-      return idx
+func findConfTag(t: seq[string], prefix = config.projectMarker): string =
+  let i = t.find (s: string) => s.startsWith prefix
+  if i != -1: result = t[i]
 
-func findConfTag(t: seq[string], prefix = config.projectMarker): int =
-  t.find proc (s: string): bool = s.startsWith prefix
-
-proc findTaskName(t: seq[string], prefix = config.taskMarker): int =
-  result = -1
-  if prefix != "":
-    result = t.findConfTag prefix
-  if result == -1:
-    result = t.findByString ' '
+proc findTaskName(t: seq[string], prefix = config.taskMarker): string =
+  result = t.findConfTag prefix
+  if result == "":
+    let i = find[string](t, (s: string) => s.find(' ') != -1)
+    if i != -1: result = t[i]
 
 proc updateConfig(keys: seq[string]) =
 
   for i in keys:
     let kvpair = i
       .split(":", 1)
-      .map(stripString)
+      .mapIt(it.strip)
 
     if kvpair[1] == "": continue
 
@@ -85,50 +78,46 @@ proc updateConfig(keys: seq[string]) =
       config.billable = coerceFloat kvpair[1]
 
     else:
-      case confKeys[1] 
+      case confKeys[1]
         of "project_marker": config.projectMarker = kvpair[1]
         of "task_marker": config.taskMarker = kvpair[1]
         of "render": config.render = parseEnum[RenderKind](kvpair[1])
         of "csv_name": config.csvName = kvpair[1]
+        of "depth_marker": config.depthMarker = kvpair[1]
         else:
           let rate = coerceFloat kvpair[1]
           config.clients.add (client: confKeys[1], rate: rate)
 
 proc parseEntryHierarchy(tags: seq[string]): seq[string] =
-  let project = tags.findConfTag 
-  let taskName = tags.findTaskName
+  let project = tags.findConfTag
+  var taskName = tags.findTaskName
 
-  if project > -1:
-    let projectHierarchy = tags[project][config.projectMarker.len..^1].split "."
+  if project != "":
+    let projectHierarchy = project[config.projectMarker.len..^1].split "."
     result = result.concat projectHierarchy
 
-  if taskName > -1:
-    var tn = tags[taskName]
-    if tn.startsWith config.taskMarker: tn = tn[config.taskMarker.len..^1]
-    result.add tn
+  if taskName != "":
+    if taskName.startsWith config.taskMarker:
+      taskName = taskName[config.taskMarker.len..^1]
+    result.add taskName
   else:
-    result.add (if project <= 0: tags[0] else: tags[project + 1])
+    # slight change in functionality: tags[project+1] -> tags[1]
+    # because indices have been exchanged for strings
+    result.add (if project == "": tags[0] else: tags[1])
 
 func toBillableHours(d: Duration): float =
   (d.inSeconds.float / 3600 * 100).floor / 100
 
-proc billableRate(e: RawTimeEntry): float =
+proc getBillableRate(e: RawTimeEntry): float =
   for c in config.clients:
     if e.tags.find(c.client) > -1:
       return c.rate
   return config.billable
 
-func totalCost(t: Table): float =
-  for row in t:
-    result += row.cost
-
-func totalHours(t: Table): float =
-  for row in t:
-    result += row.hours
-
 proc parseDuration(e: RawTimeEntry): Duration =
-  let f = initTimeFormat "yyyyMMdd'T'HHmmss'Z'"
-  let stime = e.start.parse f
+  let
+    f = initTimeFormat "yyyyMMdd'T'HHmmss'Z'"
+    stime = e.start.parse f
   var etime = stime
 
   if e.`end` != "":
@@ -141,10 +130,11 @@ proc addOrUpdateRow(
   entry: RawTimeEntry,
   hierarchy: seq[string],
 ) =
-  let taskName = hierarchy[0]
-  let nextTasks = hierarchy[1..^1]
-  let idx = table.find proc (r: TableRow): bool = r.name == taskName
-  let rowExists = idx > -1
+  let
+    taskName = hierarchy[0]
+    nextTasks = hierarchy[1..^1]
+    idx = table.find proc (r: TableRow): bool = r.name == taskName
+    rowExists = idx > -1
 
   var newRow: TableRow
   if rowExists:
@@ -152,8 +142,9 @@ proc addOrUpdateRow(
   else:
     newRow = TableRow(name: taskName)
 
-  let rate = billableRate entry
-  let hours = entry.parseDuration.toBillableHours
+  let
+    rate = getBillableRate entry
+    hours = entry.parseDuration.toBillableHours
   newRow.hours += hours
   newRow.cost += round(hours * rate, 2)
 
@@ -170,12 +161,19 @@ proc prepareTable(rawEntries: RawTimewEntries): Table =
     let entryHierarcy = entry.tags.parseEntryHierarchy
     result.addOrUpdateRow(entry, entryHierarcy)
 
+  var
+    cost: float
+    hours: float
+  for row in result:
+    cost += row.cost
+    hours += row.hours
+
   let totals =
-    TableRow(name: "Total", hours: result.totalHours, cost: result.totalCost)
+    TableRow(name: "Total", hours: hours, cost: cost)
 
   result.add totals
 
-func depthMarker(depth: int, marker = "—"): string =
+func getDepthMarker(depth: int, marker = config.depthMarker): string =
   var spacing = ""
   if depth > 0:
     spacing = " "
@@ -189,7 +187,7 @@ proc nestedTerminalRows(
     if level == 0 and i != 0:
       tt.add sep
     tt.add @[
-      fmt"{level.depthMarker}{row.name.yellow}",
+      fmt"{level.getDepthMarker}{row.name.yellow}",
       fmt"{row.hours:.2f}".blue,
       fmt"{row.cost:.2f}".green
     ]
@@ -220,8 +218,9 @@ proc echoBillableTable(
 
 proc renderTerminalTable(tableRows: Table) =
   var table: TerminalTable
-  let subtotals = tableRows[0..^2]
-  let totals = tableRows[^1]
+  let
+    subtotals = tableRows[0..^2]
+    totals = tableRows[^1]
 
   table.add @["Task".bold, "Hours".bold, "Amount".bold]
   table.add @["%SEP%"]
@@ -235,10 +234,10 @@ proc renderTerminalTable(tableRows: Table) =
 
   table.echoBillableTable 80
 
-func nestedCSVRows(t: Table, level = 0): seq[CSVRow] =
+proc nestedCSVRows(t: Table, level = 0): seq[CSVRow] =
   for row in t.items:
     let csvRow = CSVRow(
-      name: fmt"{level.depthMarker}{row.name}",
+      name: fmt"{level.getDepthMarker}{row.name}",
       hours: fmt"{row.hours:.2f}",
       cost: fmt"{row.cost:.2f}"
     )
@@ -253,15 +252,16 @@ proc renderCSV(tableRows: Table) =
   echo fmt"CSV file created: {config.csvName.green}"
 
 proc main() =
-  let rawConfigAndEntries = readAll(stdin).split "\n\n"
-
-  let configStrings = rawConfigAndEntries[0]
+  let
+    rawConfigAndEntries = readAll(stdin).split "\n\n"
+    configStrings = rawConfigAndEntries[0]
     .findAll(re"(^|\n)billable.*")
-    .map(stripString)
+    .mapIt(it.strip)
 
   updateConfig configStrings
-  let jsonData = rawConfigAndEntries[1].fromJson RawTimewEntries
-  let table = prepareTable jsonData
+  let
+    jsonData = rawConfigAndEntries[1].fromJson RawTimewEntries
+    table = prepareTable jsonData
 
   case config.render
     of rkCsv:
