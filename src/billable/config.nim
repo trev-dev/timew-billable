@@ -1,11 +1,13 @@
 import std/[strutils, sequtils, strformat]
+import discreteDecimal
+
 type
   RenderKind* = enum rkTerminal = "terminal", rkCsv = "csv"
-  ClientSpecificRate = tuple[client: string, rate: float]
+  ClientSpecificRate = tuple[client: string, rate: DiscreteDecimal]
   Config = object
     projectMarker*: string
     taskMarker*: string
-    billable*: float
+    billable*: DiscreteDecimal
     render*: RenderKind
     csvName*: string
     depthMarker*: string
@@ -14,7 +16,7 @@ type
 const defaultConfig = Config(
   projectMarker: "#",
   taskMarker: "",
-  billable: 0,
+  billable: $$2,
   render: rkTerminal,
   csvName: "billable-report.csv",
   clients: @[],
@@ -39,7 +41,7 @@ proc updateConfig*(keys: seq[string]) =
 
     let confKeys = kvpair[0].split(".", 1)
     if len(confKeys) == 1:
-      config.billable = coerceFloat kvpair[1]
+      config.billable = coerceFloat(kvpair[1]).discreteDecimal 2
 
     else:
       case confKeys[1].toLowerAscii.replace("_", "")
@@ -49,7 +51,7 @@ proc updateConfig*(keys: seq[string]) =
         of "csvname": config.csvName = kvpair[1]
         of "depthmarker": config.depthMarker = kvpair[1]
         else:
-          let rate = coerceFloat kvpair[1]
+          let rate = coerceFloat(kvpair[1]).discreteDecimal 2
           config.clients.add (client: confKeys[1], rate: rate)
 
 proc getConfig*(): Config =

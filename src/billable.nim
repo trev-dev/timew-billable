@@ -1,6 +1,7 @@
-import std/[strutils, re, sequtils, times, math, strformat, terminal, sugar]
+import std/[strutils, re, sequtils, times, strformat, terminal, sugar]
 import jsony, nancy, termstyle, csvtools
 import billable/config
+import billable/discreteDecimal
 
 type
   RawTimeEntry =
@@ -10,8 +11,8 @@ type
   Table = seq[TableRow]
   TableRow = object
     name: string
-    hours: float
-    cost: float
+    hours: DiscreteDecimal
+    cost: DiscreteDecimal
     subtasks: seq[TableRow]
 
   CSVRow = object
@@ -50,10 +51,10 @@ proc parseEntryHierarchy(tags: seq[string]): seq[string] =
     # because indices have been exchanged for strings
     result.add (if project == "": tags[0] else: tags[1])
 
-func toBillableHours(d: Duration): float =
-  (d.inSeconds.float / 3600 * 100).floor / 100
+func toBillableHours(d: Duration): DiscreteDecimal =
+  (d.inSeconds.float / 3600.0).discreteDecimal 2
 
-proc getBillableRate(e: RawTimeEntry): float =
+proc getBillableRate(e: RawTimeEntry): DiscreteDecimal =
   for c in getConfig().clients:
     if e.tags.find(c.client) > -1:
       return c.rate
@@ -85,13 +86,13 @@ proc addOrUpdateRow(
   if rowExists:
     newRow = table[idx]
   else:
-    newRow = TableRow(name: taskName)
+    newRow = TableRow(name: taskName, cost: $$2, hours: $$2)
 
   let
     rate = getBillableRate entry
     hours = entry.parseDuration.toBillableHours
   newRow.hours += hours
-  newRow.cost += round(hours * rate, 2)
+  newRow.cost += hours * rate
 
   if nextTasks.len > 0:
     newRow.subtasks.addOrUpdateRow(entry, nextTasks)
@@ -107,8 +108,8 @@ proc prepareTable(rawEntries: RawTimewEntries): Table =
     result.addOrUpdateRow(entry, entryHierarcy)
 
   var
-    cost: float
-    hours: float
+    cost = $$2
+    hours = $$2
   for row in result:
     cost += row.cost
     hours += row.hours
@@ -123,7 +124,7 @@ func getDepthMarker(depth: int, marker = getConfig().depthMarker): string =
   if depth > 0:
     spacing = " "
 
-  fmt"{marker.repeat(depth)}{spacing}"
+  &"{marker.repeat(depth)}{spacing}"
 
 proc nestedTerminalRows(
   tt: var TerminalTable, t: Table, level = 0, sep = @["%SEP%"]
@@ -132,9 +133,9 @@ proc nestedTerminalRows(
     if level == 0 and i != 0:
       tt.add sep
     tt.add @[
-      fmt"{level.getDepthMarker}{row.name.yellow}",
-      fmt"{row.hours:.2f}".blue,
-      fmt"{row.cost:.2f}".green
+      &"{level.getDepthMarker}{row.name.yellow}",
+      $(row.hours).blue,
+      $(row.cost).green
     ]
     tt.nestedTerminalRows(row.subtasks, level + 1)
 
@@ -172,9 +173,9 @@ proc renderTerminalTable(tableRows: Table) =
   table.nestedTerminalRows subtotals
   table.add @["%SEP%"]
   table.add @[
-    fmt"{totals.name}".yellow.bold,
-    fmt"{totals.hours:.2f}".blue.bold,
-    fmt"{totals.cost:.2f}".green.bold
+    $(totals.name).yellow.bold,
+    $(totals.hours).blue.bold,
+    $(totals.cost).green.bold
   ]
 
   table.echoBillableTable 80
@@ -182,9 +183,9 @@ proc renderTerminalTable(tableRows: Table) =
 proc nestedCSVRows(t: Table, level = 0): seq[CSVRow] =
   for row in t.items:
     let csvRow = CSVRow(
-      name: fmt"{level.getDepthMarker}{row.name}",
-      hours: fmt"{row.hours:.2f}",
-      cost: fmt"{row.cost:.2f}"
+      name: &"{level.getDepthMarker}{row.name}",
+      hours: $(row.hours),
+      cost: $(row.cost)
     )
     result.add csvRow
     result.add(nestedCSVRows(row.subtasks, level + 1))
@@ -194,7 +195,7 @@ proc renderCSV(tableRows: Table) =
     @[CSVRow(name: "Task", hours: "Hours", cost: "Amount")]
   report = report.concat nestedCSVRows(tableRows)
   report.writeToCsv getConfig().csvName
-  echo fmt"CSV file created: {getConfig().csvName.green}"
+  echo &"CSV file created: {getConfig().csvName.green}"
 
 proc main() =
   let
