@@ -1,105 +1,108 @@
 import std/[math, strutils]
 
 type
-  ## represents values before and after dot as ints
-  ## operates on a discrete amout of decimalPlaces, avoiding rounding weirdness
+  ## Represents values before and after dot as integers. Operates on a discrete
+  ## amount of decimal places. Avoids rounding weirdness
   DiscreteDecimal* = object
-    decimalPlaces: int
-    before: int
-    after: int
+    places: int
+    whole: int
+    decimal: int
 
-## add 2 DiscreteDecimals
+## Add two DiscreteDecimals
 func `+`*(a, b: DiscreteDecimal): DiscreteDecimal =
-  assert a.decimalPlaces == b.decimalPlaces, "number of decimalPlaces don't match"
+  assert a.places == b.places, "number of decimal places don't match"
   var
-    before = a.before + b.before
-    after = a.after + b.after
-    divisor = 10 ^ a.decimalPlaces
+    whole = a.whole + b.whole
+    decimal = a.decimal + b.decimal
+    divisor = 10 ^ a.places
 
-  before += after div divisor
-  after = after mod divisor
+  whole += decimal div divisor
+  decimal = decimal mod divisor
 
-  DiscreteDecimal(before: before, after: after, decimalPlaces: a.decimalPlaces)
+  DiscreteDecimal(whole: whole, decimal: decimal, places: a.places)
 
-## add 2 DiscreteDecimals in place
+## Add two DiscreteDecimals in place
 func `+=`*(a: var DiscreteDecimal, b: DiscreteDecimal) =
-  assert a.decimalPlaces == b.decimalPlaces, "number of decimalPlaces don't match"
+  assert a.places == b.places, "number of decimal places don't match"
   a = a + b
 
-## multiply 2 DiscreteDecimals
+## Multiply two DiscreteDecimals
 func `*`*(a, b: DiscreteDecimal): DiscreteDecimal =
-  assert a.decimalPlaces == b.decimalPlaces, "number of decimalPlaces don't match"
+  assert a.places == b.places, "number of decimal places don't match"
   var
-    before = a.before * b.before
-    before2 = a.after * b.before
-    before3 = a.before * b.after
-    before4 = a.after * b.after
-    after: int
-    divisor = 10 ^ a.decimalPlaces
+    whole = a.whole * b.whole
+    whole2 = a.decimal * b.whole
+    whole3 = a.whole * b.decimal
+    whole4 = a.decimal * b.decimal
+    decimal: int
+    divisor = 10 ^ a.places
 
-  before += before2 div divisor
-  after += before2 mod divisor
+  whole += whole2 div divisor
+  decimal += whole2 mod divisor
 
-  before += before3 div divisor
-  after += before3 mod divisor
+  whole += whole3 div divisor
+  decimal += whole3 mod divisor
 
-  after += before4 div divisor
+  decimal += whole4 div divisor
 
-  before += after div divisor
-  after = after mod divisor
+  whole += decimal div divisor
+  decimal = decimal mod divisor
 
-  DiscreteDecimal(before: before, after: after, decimalPlaces: a.decimalPlaces)
+  DiscreteDecimal(whole: whole, decimal: decimal, places: a.places)
 
-# test 2 DiscreteDecimals for equality
+# Test two DiscreteDecimals for equality
 func `==`*(a, b: DiscreteDecimal): bool =
-  (a.before == b.before) and
-  (a.after == b.after) and
-  (a.decimalPlaces == b.decimalPlaces)
+  (a.whole == b.whole) and
+  (a.decimal == b.decimal) and
+  (a.places == b.places)
 
-## new empty DiscreteDecimal, just specify decimalPlaces
+## Make a new empty DiscreteDecimal by specifying the number of decimal places
 func discreteDecimal*(places: int): DiscreteDecimal =
-  DiscreteDecimal(before: 0, after: 0, decimalPlaces: places)
+  DiscreteDecimal(whole: 0, decimal: 0, places: places)
 
-## convert int to DiscreteDecimal with specified places
+## Convert int to DiscreteDecimal with a specified number of places
 func discreteDecimal*(a: int, places: int): DiscreteDecimal =
-  DiscreteDecimal(before: a, after: 0, decimalPlaces: places)
+  DiscreteDecimal(whole: a, decimal: 0, places: places)
 
-## convert float to DiscreteDecimal with specified places
+## Convert float to DiscreteDecimal with a specified number places
 func discreteDecimal*(a: float, places: int): DiscreteDecimal =
   var
-    before = a.floor.int
+    whole = a.floor.int
     divisor = 10 ^ places
-    after = ((a - a.floor) * divisor.float).round.int
+    decimal = ((a - a.floor) * divisor.float).round.int
 
-  before += after div divisor
-  after = after mod divisor
+  whole += decimal div divisor
+  decimal = decimal mod divisor
 
-  DiscreteDecimal(before: before, after: after, decimalPlaces: places)
+  DiscreteDecimal(whole: whole, decimal: decimal, places: places)
 
-## new DiscreteDecimal, decimalPlaces are inferred from after
-func `$$`*(before, after: int): DiscreteDecimal =
-  # $ has higher precedence that other operators,
-  # so it works with + or * without parens
+## Create a DiscreteDecimal by inferring the number of places from the
+## decimal part. Uses a special operator `$$`.
+##
+## Example: `let discrete = 42$$00` => 42.00
+func `$$`*(whole, decimal: int): DiscreteDecimal =
   DiscreteDecimal(
-    before: before,
-    after: after,
-    decimalPlaces: after.float.log10.int + 1
+    whole: whole,
+    decimal: decimal,
+    places: decimal.float.log10.int + 1
   )
 
-## new empty DiscreteDecimal, just specify decimalPlaces
+## New empty DiscreteDecimal using the special `$$` operator.
+##
+## Example: `let empty = $$ 2` => 0.00
 func `$$`*(places: int): DiscreteDecimal =
   discreteDecimal(2)
 
-## convert DiscreteDecimal to string
+## Convert a DiscreteDecimal into a string
 func `$`*(a: DiscreteDecimal): string =
   let
-    existingPlaces = if a.after != 0: a.after.float.log10.int + 1 else: 1
-    missingPlaces = a.decimalPlaces - existingPlaces
+    existingPlaces = if a.decimal != 0: a.decimal.float.log10.int + 1 else: 1
+    missingPlaces = a.places - existingPlaces
   result =
-    $a.before &
+    $a.whole &
     "." &
     (if missingPlaces > 0: "0".repeat(missingPlaces) else: "") &
-    $a.after
+    $a.decimal
 
 when isMainModule:
   import sugar
