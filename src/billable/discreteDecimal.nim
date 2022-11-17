@@ -8,7 +8,6 @@ type
     whole: int
     decimal: int
 
-## Add two DiscreteDecimals
 func `+`*(a, b: DiscreteDecimal): DiscreteDecimal =
   assert a.places == b.places, "number of decimal places don't match"
   var
@@ -21,12 +20,10 @@ func `+`*(a, b: DiscreteDecimal): DiscreteDecimal =
 
   DiscreteDecimal(whole: whole, decimal: decimal, places: a.places)
 
-## Add two DiscreteDecimals in place
 func `+=`*(a: var DiscreteDecimal, b: DiscreteDecimal) =
   assert a.places == b.places, "number of decimal places don't match"
   a = a + b
 
-## Multiply two DiscreteDecimals
 func `*`*(a, b: DiscreteDecimal): DiscreteDecimal =
   assert a.places == b.places, "number of decimal places don't match"
   var
@@ -50,21 +47,17 @@ func `*`*(a, b: DiscreteDecimal): DiscreteDecimal =
 
   DiscreteDecimal(whole: whole, decimal: decimal, places: a.places)
 
-# Test two DiscreteDecimals for equality
 func `==`*(a, b: DiscreteDecimal): bool =
   (a.whole == b.whole) and
   (a.decimal == b.decimal) and
   (a.places == b.places)
 
-## Make a new empty DiscreteDecimal by specifying the number of decimal places
 func discreteDecimal*(places: int): DiscreteDecimal =
   DiscreteDecimal(whole: 0, decimal: 0, places: places)
 
-## Convert int to DiscreteDecimal with a specified number of places
 func discreteDecimal*(a: int, places: int): DiscreteDecimal =
   DiscreteDecimal(whole: a, decimal: 0, places: places)
 
-## Convert float to DiscreteDecimal with a specified number places
 func discreteDecimal*(a: float, places: int): DiscreteDecimal =
   var
     whole = a.floor.int
@@ -93,7 +86,6 @@ func `$$`*(whole, decimal: int): DiscreteDecimal =
 func `$$`*(places: int): DiscreteDecimal =
   discreteDecimal(2)
 
-## Convert a DiscreteDecimal into a string
 func `$`*(a: DiscreteDecimal): string =
   let
     existingPlaces = if a.decimal != 0: a.decimal.float.log10.int + 1 else: 1

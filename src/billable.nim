@@ -47,8 +47,6 @@ proc parseEntryHierarchy(tags: seq[string]): seq[string] =
       taskName = taskName[getConfig().taskMarker.len..^1]
     result.add taskName
   else:
-    # slight change in functionality: tags[project+1] -> tags[1]
-    # because indices have been exchanged for strings
     result.add (if project == "": tags[0] else: tags[1])
 
 func toBillableHours(d: Duration): DiscreteDecimal =
