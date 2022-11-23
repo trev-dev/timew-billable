@@ -199,8 +199,8 @@ proc main() =
   let
     rawConfigAndEntries = readAll(stdin).split "\n\n"
     configStrings = rawConfigAndEntries[0]
-    .findAll(re"(^|\n)billable.*")
-    .mapIt(it.strip)
+      .findAll(re"(^|\n)billable.*")
+      .mapIt(it.strip)
 
   updateConfig configStrings
   let
