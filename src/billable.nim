@@ -1,7 +1,6 @@
 import std/[strutils, re, sequtils, times, strformat, terminal, sugar]
-import jsony, nancy, termstyle, csvtools
+import jsony, nancy, termstyle, csvtools, fixedpoint
 import billable/config
-import billable/discreteDecimal
 
 type
   RawTimeEntry =
@@ -11,8 +10,8 @@ type
   Table = seq[TableRow]
   TableRow = object
     name: string
-    hours: DiscreteDecimal
-    cost: DiscreteDecimal
+    hours: FixedPoint
+    cost: FixedPoint
     subtasks: seq[TableRow]
 
   CSVRow = object
@@ -49,10 +48,10 @@ proc parseEntryHierarchy(tags: seq[string]): seq[string] =
   else:
     result.add (if project == "": tags[0] else: tags[1])
 
-func toBillableHours(d: Duration): DiscreteDecimal =
-  (d.inSeconds.float / 3600.0).discreteDecimal 2
+func toBillableHours(d: Duration): FixedPoint =
+  (d.inSeconds.float / 3600.0).fixedPoint(2)
 
-proc getBillableRate(e: RawTimeEntry): DiscreteDecimal =
+proc getBillableRate(e: RawTimeEntry): FixedPoint =
   for c in getConfig().clients:
     if e.tags.find(c.client) > -1:
       return c.rate
@@ -84,7 +83,7 @@ proc addOrUpdateRow(
   if rowExists:
     newRow = table[idx]
   else:
-    newRow = TableRow(name: taskName, cost: $$2, hours: $$2)
+    newRow = TableRow(name: taskName, cost: fixedPoint(2), hours: fixedPoint(2))
 
   let
     rate = getBillableRate entry
@@ -106,8 +105,8 @@ proc prepareTable(rawEntries: RawTimewEntries): Table =
     result.addOrUpdateRow(entry, entryHierarcy)
 
   var
-    cost = $$2
-    hours = $$2
+    cost = fixedPoint(2)
+    hours = fixedPoint(2)
   for row in result:
     cost += row.cost
     hours += row.hours
