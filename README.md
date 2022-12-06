@@ -8,7 +8,7 @@ This project was inspired by the venerable Emacs org-mode and its built-in clock
 
 Requires Nim with Nimble, version 1.6.6 or compatible.
 
-Version 0.2.3
+Version 0.2.4
 
 ## Contents
 
@@ -115,7 +115,7 @@ The only limit to the nested hierarchy is your sanity :) You could do something 
 
 1. Billable hour accuracy is truncated.
 
-   Billable hours are calculated by the second and truncated at the hundredth (2nd) decimal place.  This sacrifice is made to help the table add up from bottom to top, or when multiplying hours against the rate at any given point in the table.
+   Billable hours are calculated by the second and rounded at the hundredth (2nd) decimal place.  This sacrifice is made to help the table add up from bottom to top, or when multiplying hours against the rate at any given point in the table.
 
    Without this, rounding errors will occur and the table will seem inconsistent.  Generally speaking the table is accurate enough.
 
