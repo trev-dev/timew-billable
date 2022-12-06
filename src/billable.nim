@@ -101,7 +101,7 @@ func parseEntryHierarchy(tags: seq[string], conf: Config): seq[string] =
     result.add (if project <= 0: tags[0] else: tags[project + 1])
 
 func toBillableHours(d: Duration): float =
-  (d.inSeconds.float / 3600 * 100).floor / 100
+  (d.inSeconds.float / 3600 * 100).round / 100
 
 func billableRate(c: Config, e: RawTimeEntry): float =
   for c in c.clients.items:
