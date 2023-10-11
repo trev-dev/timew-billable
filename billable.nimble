@@ -13,3 +13,6 @@ requires "nim >= 1.6.6 & < 2.0",
   "jsony >= 1.1.3 & < 2.0",
   "nancy >= 0.1.1 & < 1.0",
   "termstyle >= 0.1.0 & < 1.0"
+
+binDir = "build"
+bin = @["billable"]
