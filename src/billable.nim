@@ -17,13 +17,13 @@ type
   CSVRow = object
     name, hours, cost: string
 
-func find[T](s: seq[T], pred: (T) -> bool): int =
+proc find[T](s: seq[T], pred: (T) -> bool): int =
   result = -1
   for idx, itm in s.pairs:
     if pred(itm):
       return idx
 
-func findConfTag(t: seq[string], prefix = getConfig().projectMarker): string =
+proc findConfTag(t: seq[string], prefix = getConfig().projectMarker): string =
   let i = t.find (s: string) => s.startsWith prefix
   if i != -1: result = t[i]
 
