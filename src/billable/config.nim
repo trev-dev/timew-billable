@@ -1,6 +1,6 @@
 import std/[strutils, sequtils, strformat]
 type
-  RenderKind* = enum rkTerminal = "terminal", rkCsv = "csv"
+  RenderKind* = enum rkTerminal = "terminal", rkCsv = "csv", rkBoth = "both"
   ClientSpecificRate = tuple[client: string, rate: float]
   Config = object
     projectMarker*: string

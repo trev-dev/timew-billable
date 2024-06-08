@@ -55,7 +55,7 @@ Here are the configuration options:
 * `billable.project_marker` - Specify a marker to flag the time entry as a project with a specific hierarchy.  
   Default: `#`
 * `billable.task_marker` - Specifiy a marker to flag a specific tag as the task name.  No marker is set by default.  The default behavior is to find the first tag with spaces in it.
-* `billable.render` - The render method to use for the report.  Options supported are `terminal` and `csv`.  
+* `billable.render` - The render method to use for the report.  Options supported are `terminal`, `csv` and `both`.  
   Default: `terminal`
 
 <div id="example"></div>

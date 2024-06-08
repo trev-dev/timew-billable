@@ -213,6 +213,9 @@ proc main() =
       table.renderCSV
     of rkTerminal:
       table.renderTerminalTable
+    of rkBoth:
+      table.renderTerminalTable
+      table.renderCSV
 
 when isMainModule:
   main()
